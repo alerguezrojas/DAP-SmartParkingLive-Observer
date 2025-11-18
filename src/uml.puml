@@ -1,0 +1,42 @@
+@startuml
+title SmartParking Live - Diagrama de Clases (Observer)
+
+interface ParkingObserver {
+    + update(spot: ParkingSpot)
+}
+
+class ParkingSpot {
+    - id: int
+    - occupied: boolean
+    - observers: List<ParkingObserver>
+    + attach(o: ParkingObserver)
+    + detach(o: ParkingObserver)
+    + notifyObservers()
+    + setOccupied(b: boolean)
+    + isOccupied(): boolean
+}
+
+class WebDashboard {
+    + update(spot: ParkingSpot)
+}
+
+class SecurityModule {
+    + update(spot: ParkingSpot)
+}
+
+class StatisticsModule {
+    + update(spot: ParkingSpot)
+}
+
+class MobileNotifier {
+    + update(spot: ParkingSpot)
+}
+
+ParkingSpot --> "many" ParkingObserver : notifica >
+
+ParkingObserver <|.. WebDashboard
+ParkingObserver <|.. SecurityModule
+ParkingObserver <|.. StatisticsModule
+ParkingObserver <|.. MobileNotifier
+
+@enduml
