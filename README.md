@@ -1,81 +1,25 @@
 # 🚗 SmartParking Live - Sistema de Gestión de Aparcamiento
 
-Sistema de gestión de aparcamiento en tiempo real implementando el patrón Observer con interfaz web.
+Sistema de gestión de aparcamiento en tiempo real implementando el patrón Observer con interfaz web moderna.
 
 ## 📋 Características
 
-- ✅ Patrón Observer para notificaciones en tiempo real
-- 🌐 Interfaz web moderna y responsive
-- 🔌 WebSocket para actualizaciones en tiempo real
-- 📊 Dashboard con estadísticas en vivo
-- 🎯 API REST completa
-- 📱 Notificaciones móviles simuladas
-- 🔐 Módulo de seguridad
-- 📈 Módulo de estadísticas
+- ✅ **Patrón Observer**: Notificaciones en tiempo real a múltiples observadores.
+- 🌐 **Interfaz Web Moderna**: Dashboard responsive con visualización en tiempo real.
+- 🔌 **WebSocket**: Actualizaciones instantáneas sin recargar la página.
+- 📊 **Estadísticas en Vivo**: Contadores de plazas libres, ocupadas y en mantenimiento.
+- 🎯 **API REST Completa**: Endpoints para gestión externa.
+- 📱 **Simulación Móvil**: Observador que simula notificaciones a dispositivos móviles.
+- 🔐 **Módulo de Seguridad**: Observador para alertas de seguridad.
+- 📈 **Módulo de Estadísticas**: Observador para análisis de datos.
 
 ## 🛠️ Tecnologías Utilizadas
 
-- **Backend**: Spring Boot 3.1.5
+- **Backend**: Java 17+, Spring Boot 3.1.5
 - **WebSocket**: STOMP over SockJS
-- **Frontend**: HTML5, CSS3, JavaScript vanilla
+- **Frontend**: HTML5, CSS3 (Variables, Flexbox/Grid), JavaScript Vanilla
 - **Patrón de Diseño**: Observer
-- **Java**: 17+
-
-## 🚀 Instalación y Ejecución
-
-### Requisitos Previos
-
-- Java 17 o superior
-- Maven 3.6+
-
-### Pasos para ejecutar
-
-1. **Clonar o descargar el proyecto**
-
-2. **Compilar el proyecto con Maven:**
-   ```bash
-   mvn clean install
-   ```
-
-3. **Ejecutar la aplicación:**
-   ```bash
-   mvn spring-boot:run
-   ```
-
-   O ejecutar directamente la clase `SmartParkingApplication`
-
-4. **Acceder a la interfaz web:**
-   
-   Abrir el navegador en: [http://localhost:8080](http://localhost:8080)
-
-## 📡 API REST
-
-### Endpoints disponibles:
-
-- **GET** `/api/parking/spots` - Obtener todas las plazas
-- **GET** `/api/parking/spots/{id}` - Obtener una plaza específica
-- **PUT** `/api/parking/spots/{id}/status` - Cambiar estado de una plaza
-- **GET** `/api/parking/statistics` - Obtener estadísticas del parking
-
-### Ejemplo de cambio de estado:
-
-```bash
-curl -X PUT http://localhost:8080/api/parking/spots/1/status \
-  -H "Content-Type: application/json" \
-  -d '{"status":"OCCUPIED"}'
-```
-
-## 🎨 Interfaz Web
-
-La interfaz web incluye:
-
-- **Dashboard en tiempo real** con estadísticas
-- **Grid visual** de todas las plazas con código de colores:
-  - 🟢 Verde: Plaza libre
-  - 🟠 Naranja: Plaza ocupada
-  - 🔴 Rojo: Plaza fuera de servicio
-- **Registro de actividad** con todas las actualizaciones
-- **Controles de prueba** para cambiar estados manualmente
+- **Build Tool**: Maven
 
 ## 🏗️ Arquitectura
 
@@ -85,95 +29,116 @@ El sistema implementa el patrón Observer donde:
 
 - **Subject**: `ParkingSpot` (cada plaza de aparcamiento)
 - **Observers**: 
-  - `WebDashboardObserver` - Panel web con resumen
-  - `SecurityModuleObserver` - Alertas de seguridad
-  - `StatisticsModuleObserver` - Estadísticas en tiempo real
-  - `MobileNotifierObserver` - Notificaciones móviles simuladas
-  - `WebSocketObserver` - Notificaciones web en tiempo real
+  - `WebDashboardObserver`: Panel web con resumen.
+  - `SecurityModuleObserver`: Alertas de seguridad.
+  - `StatisticsModuleObserver`: Estadísticas en tiempo real.
+  - `MobileNotifierObserver`: Notificaciones móviles simuladas.
+  - `WebSocketObserver`: Puente para notificaciones web en tiempo real.
 
 ### Estructura del Proyecto
 
 ```
 src/
-├── smartparking/
-│   ├── SmartParkingApplication.java  # Aplicación Spring Boot
-│   ├── Main.java                     # Aplicación consola original
-│   ├── controller/
-│   │   └── ParkingController.java    # REST API
-│   ├── service/
-│   │   └── ParkingService.java       # Lógica de negocio
-│   ├── web/
-│   │   └── WebSocketConfig.java      # Configuración WebSocket
-│   ├── model/
-│   │   ├── ParkingLot.java          # Modelo del parking
-│   │   ├── ParkingSpot.java         # Modelo de plaza (Subject)
-│   │   └── SpotStatus.java          # Estados posibles
-│   ├── observer/
-│   │   └── ParkingObserver.java     # Interfaz Observer
-│   └── observers/
-│       ├── WebDashboardObserver.java
-│       ├── SecurityModuleObserver.java
-│       ├── StatisticsModuleObserver.java
-│       ├── MobileNotifierObserver.java
-│       └── WebSocketObserver.java
-└── main/resources/
-    ├── static/
-    │   ├── index.html               # Interfaz web
-    │   ├── styles.css               # Estilos
-    │   └── app.js                   # Lógica cliente
-    └── application.properties       # Configuración Spring
+├── main/
+│   ├── java/smartparking/
+│   │   ├── SmartParkingApplication.java  # Aplicación Spring Boot
+│   │   ├── controller/                   # REST API
+│   │   ├── service/                      # Lógica de negocio
+│   │   ├── web/                          # Configuración WebSocket
+│   │   ├── model/                        # Modelos (ParkingLot, ParkingSpot)
+│   │   ├── observer/                     # Interfaz ParkingObserver
+│   │   └── observers/                    # Implementaciones de observadores
+│   └── resources/
+│       ├── static/                       # Frontend (HTML, CSS, JS)
+│       └── application.properties        # Configuración
 ```
 
-## 🔄 Flujo de Datos
+## 🚀 Instalación y Ejecución
 
-1. **Cambio de Estado**: Se actualiza el estado de una plaza (vía API o simulación)
-2. **Notificación**: `ParkingSpot` notifica a todos sus observadores
-3. **Procesamiento**: Cada observador procesa la actualización según su responsabilidad
-4. **WebSocket**: `WebSocketObserver` envía la actualización a los clientes web
-5. **Actualización UI**: La interfaz web se actualiza en tiempo real
+### Prerrequisitos
 
-## 🎯 Uso
+1. **Java 17** o superior instalado (`java -version`).
+2. **Maven** instalado (`mvn -version`) o usar el wrapper/IDE.
+3. Puerto **8080** libre.
 
-### Simulación Automática
+### Pasos para ejecutar
 
-Al iniciar la aplicación, se ejecuta una simulación automática después de 5 segundos que:
-- Ocupa varias plazas
-- Libera algunas plazas
-- Marca plazas fuera de servicio
+#### Opción 1: Usando IntelliJ IDEA (Recomendado)
+1. Abrir el proyecto en IntelliJ IDEA.
+2. Esperar a que Maven descargue las dependencias.
+3. Ejecutar la clase `src/main/java/smartparking/SmartParkingApplication.java`.
 
-### Control Manual
+#### Opción 2: Línea de Comandos
+1. Navegar a la carpeta del proyecto.
+2. Compilar y ejecutar:
+   ```bash
+   mvn spring-boot:run
+   ```
 
-Desde la interfaz web puedes:
-1. Seleccionar cualquier plaza del selector
-2. Elegir un nuevo estado
-3. Hacer clic en "Actualizar Estado"
-4. Ver la actualización en tiempo real en el dashboard
+#### Opción 3: Empaquetado JAR
+1. Compilar:
+   ```bash
+   mvn clean package
+   ```
+2. Ejecutar:
+   ```bash
+   java -jar target/smart-parking-live-observer-1.0.0.jar
+   ```
 
-## 📝 Logs de Consola
+Una vez iniciado, accede a:
+- **Web**: [http://localhost:8080](http://localhost:8080)
+- **API**: [http://localhost:8080/api/parking](http://localhost:8080/api/parking)
 
-Los observadores imprimen información detallada en la consola:
-- `[WebDashboard]` - Resumen del estado del parking
-- `[SecurityModule]` - Alertas de seguridad
-- `[StatisticsModule]` - Estadísticas de ocupación
-- `[MobileNotifier]` - Notificaciones de plazas específicas
+## 🎨 Interfaz Web
 
-## 🌟 Características Avanzadas
+La interfaz web ha sido diseñada para ser intuitiva y profesional:
 
-- **Conexión automática**: El cliente web se reconecta automáticamente si se pierde la conexión
-- **Animaciones suaves**: Transiciones visuales para cambios de estado
-- **Responsive**: La interfaz se adapta a diferentes tamaños de pantalla
-- **Registro de actividad**: Historial de los últimos 50 cambios
-- **Indicador de conexión**: Muestra el estado de la conexión WebSocket
+- **Dashboard**: Muestra tarjetas con estadísticas clave (Total, Libres, Ocupadas, Mantenimiento).
+- **Mapa de Plazas**: Visualización gráfica del estado de cada plaza.
+  - 🟢 Libre
+  - 🔴 Ocupada
+  - 🟠 Mantenimiento
+- **Registro de Actividad**: Log en tiempo real de todos los eventos del sistema.
+- **Panel de Control**: Permite cambiar manualmente el estado de las plazas para pruebas.
+
+### Flujo de Datos en Tiempo Real
+1. Cambio de estado en el Backend (API/Simulación).
+2. `ParkingSpot` notifica a `WebSocketObserver`.
+3. `WebSocketObserver` envía mensaje STOMP a `/topic/parking-updates`.
+4. Frontend recibe el mensaje y actualiza el DOM instantáneamente.
+
+## 📡 API REST
+
+Endpoints disponibles para integración:
+
+- `GET /api/parking/spots`: Listar todas las plazas.
+- `GET /api/parking/spots/{id}`: Obtener detalle de una plaza.
+- `PUT /api/parking/spots/{id}/status`: Cambiar estado.
+  ```json
+  { "status": "OCCUPIED" }
+  ```
+- `GET /api/parking/statistics`: Obtener estadísticas actuales.
+
+### Ejemplo cURL
+```bash
+curl -X PUT http://localhost:8080/api/parking/spots/1/status \
+  -H "Content-Type: application/json" \
+  -d '{"status":"OCCUPIED"}'
+```
+
+## 🔧 Solución de Problemas
+
+- **Puerto 8080 ocupado**:
+  Edita `src/main/resources/application.properties` y cambia `server.port=8081`.
+- **Errores de compilación**:
+  Ejecuta `mvn clean install` para forzar la descarga de dependencias.
+- **No conecta WebSocket**:
+  Verifica que no haya firewalls bloqueando el puerto y revisa la consola del navegador (F12).
 
 ## 🤝 Contribuir
 
-Este proyecto es un ejemplo educativo del patrón Observer aplicado a un sistema real.
-
-## 📄 Licencia
-
-Proyecto educativo - Universidad de La Laguna (ULL)
+Este es un proyecto educativo de la Universidad de La Laguna (ULL) para demostrar el patrón de diseño Observer en un entorno real con Spring Boot.
 
 ---
-
-Desarrollado con ❤️ usando el patrón Observer
+Desarrollado con ❤️ usando Java y Spring Boot.
 

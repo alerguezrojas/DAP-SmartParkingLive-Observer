@@ -22,7 +22,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws-parking")
-                .setAllowedOrigins("*")
+                .setAllowedOriginPatterns("*") // Usar patterns para Spring Boot 3
                 .withSockJS();
     }
 }

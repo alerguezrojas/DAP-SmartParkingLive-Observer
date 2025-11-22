@@ -62,10 +62,17 @@ function createSpotElement(spot) {
     const statusText = {
         'FREE': 'Libre',
         'OCCUPIED': 'Ocupada',
-        'OUT_OF_SERVICE': 'Fuera de Servicio'
+        'OUT_OF_SERVICE': 'Mantenimiento'
+    };
+    
+    const icons = {
+        'FREE': '<i class="fa-solid fa-check-circle"></i>',
+        'OCCUPIED': '<i class="fa-solid fa-car-side"></i>',
+        'OUT_OF_SERVICE': '<i class="fa-solid fa-wrench"></i>'
     };
 
     div.innerHTML = `
+        <div class="spot-icon">${icons[spot.status]}</div>
         <div class="spot-number">${spot.id}</div>
         <div class="spot-status">${statusText[spot.status]}</div>
     `;
@@ -82,13 +89,21 @@ function updateSpotInGrid(spotId, newStatus) {
         // Añadir nueva clase
         spotElement.classList.add(newStatus);
 
-        // Actualizar texto
+        // Actualizar texto e icono
         const statusText = {
             'FREE': 'Libre',
             'OCCUPIED': 'Ocupada',
-            'OUT_OF_SERVICE': 'Fuera de Servicio'
+            'OUT_OF_SERVICE': 'Mantenimiento'
         };
+        
+        const icons = {
+            'FREE': '<i class="fa-solid fa-check-circle"></i>',
+            'OCCUPIED': '<i class="fa-solid fa-car-side"></i>',
+            'OUT_OF_SERVICE': '<i class="fa-solid fa-wrench"></i>'
+        };
+        
         spotElement.querySelector('.spot-status').textContent = statusText[newStatus];
+        spotElement.querySelector('.spot-icon').innerHTML = icons[newStatus];
 
         // Animación de actualización
         spotElement.style.animation = 'none';
@@ -116,7 +131,7 @@ function showSpotDetails(spot) {
     const statusText = {
         'FREE': 'Libre',
         'OCCUPIED': 'Ocupada',
-        'OUT_OF_SERVICE': 'Fuera de Servicio'
+        'OUT_OF_SERVICE': 'Mantenimiento'
     };
 
     alert(`Plaza ${spot.id}\nEstado: ${statusText[spot.status]}`);
@@ -144,7 +159,20 @@ async function updateSpotStatus() {
         if (response.ok) {
             const result = await response.json();
             console.log('✅ Estado actualizado:', result);
-            addLogEntry(`Plaza ${spotId} cambiada a ${status}`, status);
+            
+            // Actualizar UI inmediatamente (Optimistic Update)
+            updateSpotInGrid(spotId, status);
+            
+            const statusText = {
+                'FREE': 'Libre',
+                'OCCUPIED': 'Ocupada',
+                'OUT_OF_SERVICE': 'Mantenimiento'
+            };
+            
+            addLogEntry(`Plaza ${spotId} cambiada a ${statusText[status]}`, status);
+            
+            // Recargar estadísticas para mantener consistencia
+            loadStatistics();
         } else {
             console.error('❌ Error al actualizar estado');
             alert('Error al actualizar el estado de la plaza');
@@ -189,7 +217,7 @@ function handleParkingUpdate(update) {
     const statusText = {
         'FREE': 'Libre',
         'OCCUPIED': 'Ocupada',
-        'OUT_OF_SERVICE': 'Fuera de Servicio'
+        'OUT_OF_SERVICE': 'Mantenimiento'
     };
     addLogEntry(
         `Plaza ${update.spotId} → ${statusText[update.status]}`,
@@ -235,10 +263,23 @@ function addLogEntry(message, status) {
 
     const now = new Date();
     const timeString = now.toLocaleTimeString('es-ES');
+    
+    // Icon mapping
+    const icons = {
+        'FREE': '<i class="fa-solid fa-check"></i>',
+        'OCCUPIED': '<i class="fa-solid fa-car"></i>',
+        'OUT_OF_SERVICE': '<i class="fa-solid fa-wrench"></i>',
+        'error': '<i class="fa-solid fa-triangle-exclamation"></i>'
+    };
+    
+    const icon = icons[status] || '<i class="fa-solid fa-info"></i>';
 
     entry.innerHTML = `
-        <div class="log-message">${message}</div>
-        <div class="log-time">${timeString}</div>
+        <div class="log-icon">${icon}</div>
+        <div class="log-content">
+            <div class="log-message">${message}</div>
+            <div class="log-time">${timeString}</div>
+        </div>
     `;
 
     log.insertBefore(entry, log.firstChild);
@@ -249,13 +290,5 @@ function addLogEntry(message, status) {
     }
 }
 
-// Animación CSS para el pulso
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes pulse {
-        0%, 100% { transform: scale(1); }
-        50% { transform: scale(1.05); }
-    }
-`;
-document.head.appendChild(style);
+
 
