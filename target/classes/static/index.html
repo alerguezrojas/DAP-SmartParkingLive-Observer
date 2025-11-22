@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartParking Live - Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚗 SmartParking Live</h1>
+            <p class="subtitle">Sistema de Gestión de Aparcamiento en Tiempo Real</p>
+            <div class="connection-status">
+                <span id="connection-indicator" class="indicator disconnected"></span>
+                <span id="connection-text">Desconectado</span>
+            </div>
+        </header>
+
+        <section class="statistics">
+            <div class="stat-card">
+                <div class="stat-icon">📊</div>
+                <div class="stat-content">
+                    <h3>Total Plazas</h3>
+                    <p id="total-spots" class="stat-value">0</p>
+                </div>
+            </div>
+            <div class="stat-card free">
+                <div class="stat-icon">✅</div>
+                <div class="stat-content">
+                    <h3>Libres</h3>
+                    <p id="free-spots" class="stat-value">0</p>
+                </div>
+            </div>
+            <div class="stat-card occupied">
+                <div class="stat-icon">🚗</div>
+                <div class="stat-content">
+                    <h3>Ocupadas</h3>
+                    <p id="occupied-spots" class="stat-value">0</p>
+                </div>
+            </div>
+            <div class="stat-card out-of-service">
+                <div class="stat-icon">⚠️</div>
+                <div class="stat-content">
+                    <h3>Fuera de Servicio</h3>
+                    <p id="out-of-service-spots" class="stat-value">0</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="parking-grid-container">
+            <h2>Estado de las Plazas</h2>
+            <div id="parking-grid" class="parking-grid">
+                <!-- Las plazas se generarán dinámicamente -->
+            </div>
+        </section>
+
+        <section class="activity-log-container">
+            <h2>Registro de Actividad</h2>
+            <div id="activity-log" class="activity-log">
+                <!-- Los logs se añadirán dinámicamente -->
+            </div>
+        </section>
+
+        <section class="controls">
+            <h2>Controles de Prueba</h2>
+            <div class="control-group">
+                <label for="spot-selector">Seleccionar Plaza:</label>
+                <select id="spot-selector">
+                    <option value="">-- Seleccione una plaza --</option>
+                </select>
+
+                <label for="status-selector">Nuevo Estado:</label>
+                <select id="status-selector">
+                    <option value="FREE">Libre</option>
+                    <option value="OCCUPIED">Ocupada</option>
+                    <option value="OUT_OF_SERVICE">Fuera de Servicio</option>
+                </select>
+
+                <button id="update-btn" onclick="updateSpotStatus()">Actualizar Estado</button>
+            </div>
+        </section>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
+
