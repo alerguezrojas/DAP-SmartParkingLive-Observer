@@ -23,7 +23,7 @@ public class SmartParkingApplication {
     }
 
     @Bean
-    public CommandLineRunner init(ParkingService parkingService, SimpMessagingTemplate messagingTemplate) {
+    CommandLineRunner init(ParkingService parkingService, SimpMessagingTemplate messagingTemplate) {
         return args -> {
             ParkingLot parkingLot = parkingService.getParkingLot();
 
