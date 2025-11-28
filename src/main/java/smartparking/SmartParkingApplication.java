@@ -7,11 +7,13 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import smartparking.model.ParkingLot;
+import smartparking.observers.ActivityLogObserver;
 import smartparking.observers.MobileNotifierObserver;
 import smartparking.observers.SecurityModuleObserver;
 import smartparking.observers.StatisticsModuleObserver;
 import smartparking.observers.WebDashboardObserver;
 import smartparking.observers.WebSocketObserver;
+import smartparking.service.ParkingActivityLog;
 import smartparking.service.ParkingService;
 
 @SpringBootApplication
@@ -23,7 +25,7 @@ public class SmartParkingApplication {
     }
 
     @Bean
-    CommandLineRunner init(ParkingService parkingService, SimpMessagingTemplate messagingTemplate) {
+    CommandLineRunner init(ParkingService parkingService, SimpMessagingTemplate messagingTemplate, ParkingActivityLog activityLog) {
         return args -> {
             ParkingLot parkingLot = parkingService.getParkingLot();
 
@@ -33,12 +35,14 @@ public class SmartParkingApplication {
             StatisticsModuleObserver statisticsModule = new StatisticsModuleObserver(parkingLot);
             MobileNotifierObserver mobileNotifier = new MobileNotifierObserver(3);
             WebSocketObserver webSocketObserver = new WebSocketObserver(messagingTemplate);
+            ActivityLogObserver activityLogObserver = new ActivityLogObserver(activityLog);
 
             parkingLot.attachObserverToAllSpots(webDashboard);
             parkingLot.attachObserverToAllSpots(securityModule);
             parkingLot.attachObserverToAllSpots(statisticsModule);
             parkingLot.attachObserverToAllSpots(mobileNotifier);
             parkingLot.attachObserverToAllSpots(webSocketObserver);
+            parkingLot.attachObserverToAllSpots(activityLogObserver);
 
             System.out.println("\n========================================");
             System.out.println("SmartParking Live - Servidor iniciado");
@@ -50,4 +54,3 @@ public class SmartParkingApplication {
         };
     }
 }
-

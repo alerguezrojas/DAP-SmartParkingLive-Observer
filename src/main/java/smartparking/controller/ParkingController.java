@@ -7,10 +7,14 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import smartparking.integration.CarparkSnapshot;
+import smartparking.model.ParkingEvent;
 import smartparking.model.ParkingSpot;
 import smartparking.model.SpotStatus;
+import smartparking.service.MonitoringService;
+import smartparking.service.ParkingActivityLog;
 import smartparking.service.ParkingService;
 import smartparking.service.RealTimeParkingUpdater;
 
@@ -29,10 +33,19 @@ public class ParkingController {
 
     private final ParkingService parkingService;
     private final RealTimeParkingUpdater realTimeParkingUpdater;
+    private final ParkingActivityLog parkingActivityLog;
+    private final MonitoringService monitoringService;
 
-    public ParkingController(ParkingService parkingService, RealTimeParkingUpdater realTimeParkingUpdater) {
+    public ParkingController(
+            ParkingService parkingService,
+            RealTimeParkingUpdater realTimeParkingUpdater,
+            ParkingActivityLog parkingActivityLog,
+            MonitoringService monitoringService
+    ) {
         this.parkingService = parkingService;
         this.realTimeParkingUpdater = realTimeParkingUpdater;
+        this.parkingActivityLog = parkingActivityLog;
+        this.monitoringService = monitoringService;
     }
 
     /**
@@ -108,5 +121,22 @@ public class ParkingController {
                 ))
         );
     }
-}
 
+    /**
+     * Devuelve el log mas reciente de eventos del parking.
+     */
+    @GetMapping("/events")
+    public ResponseEntity<List<ParkingEvent>> getRecentEvents(
+            @RequestParam(value = "limit", defaultValue = "50") int limit) {
+        int safeLimit = Math.max(1, Math.min(limit, 200));
+        return ResponseEntity.ok(parkingActivityLog.getRecent(safeLimit));
+    }
+
+    /**
+     * Snapshot de salud combinando feed y estado interno.
+     */
+    @GetMapping("/health")
+    public ResponseEntity<MonitoringService.HealthSnapshot> getHealth() {
+        return ResponseEntity.ok(monitoringService.getHealthSnapshot());
+    }
+}

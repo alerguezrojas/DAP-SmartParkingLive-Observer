@@ -13,6 +13,9 @@
     --status-free: #10b981;
     --status-occupied: #ef4444;
     --status-maintenance: #f59e0b;
+    --status-up: #10b981;
+    --status-degraded: #f59e0b;
+    --status-down: #ef4444;
     
     /* Backgrounds */
     --bg-body: #f3f4f6;
@@ -195,6 +198,66 @@ body {
     gap: var(--spacing-md);
 }
 
+.health-status-pill {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 12px;
+    background-color: #f8fafc;
+    border-radius: 999px;
+    border: 1px solid var(--border-color);
+    min-width: 180px;
+}
+
+.pill-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: var(--status-degraded);
+    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+}
+
+.health-status-pill .pill-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+}
+
+.health-status-pill small {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+}
+
+.pill-up {
+    background-color: #ecfdf5;
+    border-color: #d1fae5;
+}
+
+.pill-up .pill-dot {
+    background-color: var(--status-up);
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+}
+
+.pill-degraded {
+    background-color: #fffbeb;
+    border-color: #fef3c7;
+}
+
+.pill-degraded .pill-dot {
+    background-color: var(--status-degraded);
+    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+}
+
+.pill-down {
+    background-color: #fef2f2;
+    border-color: #fee2e2;
+}
+
+.pill-down .pill-dot {
+    background-color: var(--status-down);
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+}
+
 .connection-status {
     display: flex;
     align-items: center;
@@ -284,6 +347,7 @@ body {
 .stat-card.free .stat-icon { background-color: #d1fae5; color: var(--status-free); }
 .stat-card.occupied .stat-icon { background-color: #fee2e2; color: var(--status-occupied); }
 .stat-card.out-of-service .stat-icon { background-color: #fef3c7; color: var(--status-maintenance); }
+.stat-card.health .stat-icon { background-color: #e0f2fe; color: var(--info-color); }
 
 .stat-info h3 {
     font-size: 0.875rem;
@@ -491,6 +555,67 @@ body {
 
 .btn-primary:hover {
     background-color: var(--primary-dark);
+}
+
+.control-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.checkbox {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.9rem;
+    color: var(--text-main);
+}
+
+.pricing-section input[type="number"],
+.pricing-section input[type="datetime-local"] {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 0.95rem;
+}
+
+.pricing-result {
+    margin-top: 12px;
+    padding: 10px;
+    background: #f8fafc;
+    border: 1px dashed var(--border-color);
+    border-radius: 8px;
+    font-size: 0.9rem;
+}
+
+.pricing-result .muted {
+    color: var(--text-secondary);
+}
+
+.quote-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 12px;
+}
+
+.quote-grid .label {
+    color: var(--text-secondary);
+}
+
+.quote-grid .value {
+    font-weight: 600;
+    text-align: right;
+}
+
+.quote-total {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    font-weight: 700;
 }
 
 /* Activity Log */

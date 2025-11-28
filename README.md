@@ -142,3 +142,7 @@ Este es un proyecto educativo de la Universidad de La Laguna (ULL) para demostra
 ---
 Desarrollado con ❤️ usando Java y Spring Boot.
 
+## Nuevas mejoras (Codex)
+- Endpoint `/api/parking/events` para consultar el log reciente de cambios.
+- Endpoint `/api/parking/health` con estado combinado del feed y estadisticas locales.
+- Endpoint `/api/parking/pricing/quote` con estrategia dinamica de tarifas (configurable en `application.properties`).

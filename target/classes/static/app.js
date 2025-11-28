@@ -1,39 +1,44 @@
-// Configuración de la API
+// Configuracion de la API
 const API_URL = 'http://localhost:8080/api/parking';
 const WS_URL = 'http://localhost:8080/ws-parking';
+const EVENTS_URL = `${API_URL}/events`;
+const HEALTH_URL = `${API_URL}/health`;
+const PRICING_URL = `${API_URL}/pricing/quote`;
 
 let stompClient = null;
 let spots = [];
 
-// Inicializar la aplicación
+// Inicializar la aplicacion
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('🚀 Iniciando SmartParking Live Dashboard...');
+    console.log('Iniciando SmartParking Live Dashboard...');
     loadParkingData();
     connectWebSocket();
+    loadHealth();
+    loadEvents();
+    setInterval(loadHealth, 30000);
+    setInterval(loadEvents, 20000);
 });
 
 // Cargar datos del parking
 async function loadParkingData() {
     try {
-        // Cargar estadísticas
         const statsResponse = await fetch(`${API_URL}/statistics`);
         const stats = await statsResponse.json();
         updateStatistics(stats);
 
-        // Cargar plazas
         const spotsResponse = await fetch(`${API_URL}/spots`);
         spots = await spotsResponse.json();
         renderParkingGrid(spots);
         populateSpotSelector(spots);
 
-        console.log('✅ Datos del parking cargados correctamente');
+        console.log('Datos del parking cargados correctamente');
     } catch (error) {
-        console.error('❌ Error al cargar datos del parking:', error);
+        console.error('Error al cargar datos del parking:', error);
         addLogEntry('Error al cargar datos del parking', 'error');
     }
 }
 
-// Actualizar estadísticas
+// Actualizar estadisticas
 function updateStatistics(stats) {
     document.getElementById('total-spots').textContent = stats.total;
     document.getElementById('free-spots').textContent = stats.free;
@@ -64,7 +69,7 @@ function createSpotElement(spot) {
         'OCCUPIED': 'Ocupada',
         'OUT_OF_SERVICE': 'Mantenimiento'
     };
-    
+
     const icons = {
         'FREE': '<i class="fa-solid fa-check-circle"></i>',
         'OCCUPIED': '<i class="fa-solid fa-car-side"></i>',
@@ -80,32 +85,28 @@ function createSpotElement(spot) {
     return div;
 }
 
-// Actualizar una plaza específica en el grid
+// Actualizar una plaza especifica en el grid
 function updateSpotInGrid(spotId, newStatus) {
     const spotElement = document.querySelector(`[data-spot-id="${spotId}"]`);
     if (spotElement) {
-        // Remover clases de estado anteriores
         spotElement.classList.remove('FREE', 'OCCUPIED', 'OUT_OF_SERVICE');
-        // Añadir nueva clase
         spotElement.classList.add(newStatus);
 
-        // Actualizar texto e icono
         const statusText = {
             'FREE': 'Libre',
             'OCCUPIED': 'Ocupada',
             'OUT_OF_SERVICE': 'Mantenimiento'
         };
-        
+
         const icons = {
             'FREE': '<i class="fa-solid fa-check-circle"></i>',
             'OCCUPIED': '<i class="fa-solid fa-car-side"></i>',
             'OUT_OF_SERVICE': '<i class="fa-solid fa-wrench"></i>'
         };
-        
+
         spotElement.querySelector('.spot-status').textContent = statusText[newStatus];
         spotElement.querySelector('.spot-icon').innerHTML = icons[newStatus];
 
-        // Animación de actualización
         spotElement.style.animation = 'none';
         setTimeout(() => {
             spotElement.style.animation = 'pulse 0.5s ease';
@@ -158,28 +159,26 @@ async function updateSpotStatus() {
 
         if (response.ok) {
             const result = await response.json();
-            console.log('✅ Estado actualizado:', result);
-            
-            // Actualizar UI inmediatamente (Optimistic Update)
+            console.log('Estado actualizado:', result);
+
             updateSpotInGrid(spotId, status);
-            
+
             const statusText = {
                 'FREE': 'Libre',
                 'OCCUPIED': 'Ocupada',
                 'OUT_OF_SERVICE': 'Mantenimiento'
             };
-            
+
             addLogEntry(`Plaza ${spotId} cambiada a ${statusText[status]}`, status);
-            
-            // Recargar estadísticas para mantener consistencia
             loadStatistics();
+            loadEvents();
         } else {
-            console.error('❌ Error al actualizar estado');
+            console.error('Error al actualizar estado');
             alert('Error al actualizar el estado de la plaza');
         }
     } catch (error) {
-        console.error('❌ Error:', error);
-        alert('Error de conexión con el servidor');
+        console.error('Error:', error);
+        alert('Error de conexion con el servidor');
     }
 }
 
@@ -189,57 +188,111 @@ function connectWebSocket() {
     stompClient = Stomp.over(socket);
 
     stompClient.connect({}, () => {
-        console.log('🔌 WebSocket conectado');
+        console.log('WebSocket conectado');
         updateConnectionStatus(true);
 
-        // Suscribirse a las actualizaciones del parking
         stompClient.subscribe('/topic/parking-updates', (message) => {
             const update = JSON.parse(message.body);
             handleParkingUpdate(update);
         });
     }, (error) => {
-        console.error('❌ Error de WebSocket:', error);
+        console.error('Error de WebSocket:', error);
         updateConnectionStatus(false);
-
-        // Intentar reconectar después de 5 segundos
         setTimeout(connectWebSocket, 5000);
     });
 }
 
-// Manejar actualizaciones del parking vía WebSocket
+// Manejar actualizaciones del parking via WebSocket
 function handleParkingUpdate(update) {
-    console.log('📡 Actualización recibida:', update);
-
-    // Actualizar la plaza en el grid
+    console.log('Actualizacion recibida:', update);
     updateSpotInGrid(update.spotId, update.status);
 
-    // Añadir entrada al log
     const statusText = {
         'FREE': 'Libre',
         'OCCUPIED': 'Ocupada',
         'OUT_OF_SERVICE': 'Mantenimiento'
     };
-    addLogEntry(
-        `Plaza ${update.spotId} → ${statusText[update.status]}`,
-        update.status
-    );
-
-    // Recargar estadísticas
+    addLogEntry(`Plaza ${update.spotId} -> ${statusText[update.status]}`, update.status, update.timestamp);
     loadStatistics();
+    loadEvents();
 }
 
-// Cargar solo las estadísticas
+// Cargar solo las estadisticas
 async function loadStatistics() {
     try {
         const response = await fetch(`${API_URL}/statistics`);
         const stats = await response.json();
         updateStatistics(stats);
     } catch (error) {
-        console.error('❌ Error al cargar estadísticas:', error);
+        console.error('Error al cargar estadisticas:', error);
     }
 }
 
-// Actualizar estado de conexión
+// Cargar health
+async function loadHealth() {
+    try {
+        const response = await fetch(HEALTH_URL);
+        const health = await response.json();
+        updateHealthUI(health);
+    } catch (error) {
+        console.error('No se pudo obtener salud del sistema:', error);
+    }
+}
+
+function updateHealthUI(health) {
+    const status = (health.status || 'DEGRADED').toUpperCase();
+    const statusCard = document.getElementById('health-status-card');
+    const healthLatency = document.getElementById('health-latency');
+    const pill = document.getElementById('health-pill');
+    const pillText = document.getElementById('health-status-text');
+    const pillUpdated = document.getElementById('health-updated');
+    const dot = document.getElementById('health-dot');
+
+    const classes = ['pill-up', 'pill-degraded', 'pill-down'];
+    pill.classList.remove(...classes);
+
+    if (status === 'UP') {
+        pill.classList.add('pill-up');
+        dot.style.backgroundColor = 'var(--status-up)';
+    } else if (status === 'DEGRADED') {
+        pill.classList.add('pill-degraded');
+        dot.style.backgroundColor = 'var(--status-degraded)';
+    } else {
+        pill.classList.add('pill-down');
+        dot.style.backgroundColor = 'var(--status-down)';
+    }
+
+    statusCard.textContent = status;
+    pillText.textContent = status;
+
+    const feedAge = health.feedAgeMs != null ? `${Math.round(health.feedAgeMs / 1000)}s` : '-';
+    const lastFeed = health.lastFeedAt || '-';
+    healthLatency.textContent = `Feed: ${feedAge}`;
+    pillUpdated.textContent = `Feed: ${lastFeed}`;
+}
+
+// Cargar eventos desde API
+async function loadEvents() {
+    try {
+        const response = await fetch(`${EVENTS_URL}?limit=30`);
+        const events = await response.json();
+        renderEventLog(events);
+    } catch (error) {
+        console.error('No se pudo obtener eventos:', error);
+    }
+}
+
+function renderEventLog(events) {
+    const log = document.getElementById('activity-log');
+    log.innerHTML = '';
+    for (let i = events.length - 1; i >= 0; i--) {
+        const ev = events[i];
+        const msg = ev.message || `Plaza ${ev.spotId} -> ${ev.status}`;
+        addLogEntry(msg, ev.status, ev.occurredAt, log);
+    }
+}
+
+// Actualizar estado de conexion
 function updateConnectionStatus(connected) {
     const indicator = document.getElementById('connection-indicator');
     const text = document.getElementById('connection-text');
@@ -255,23 +308,22 @@ function updateConnectionStatus(connected) {
     }
 }
 
-// Añadir entrada al log de actividad
-function addLogEntry(message, status) {
-    const log = document.getElementById('activity-log');
+// Anadir entrada al log de actividad
+function addLogEntry(message, status, timestamp, targetLog) {
+    const log = targetLog || document.getElementById('activity-log');
     const entry = document.createElement('div');
-    entry.className = `log-entry ${status}`;
+    entry.className = `log-entry ${status || ''}`;
 
-    const now = new Date();
-    const timeString = now.toLocaleTimeString('es-ES');
-    
-    // Icon mapping
+    const eventDate = timestamp ? new Date(timestamp) : new Date();
+    const timeString = eventDate.toLocaleTimeString('es-ES');
+
     const icons = {
         'FREE': '<i class="fa-solid fa-check"></i>',
         'OCCUPIED': '<i class="fa-solid fa-car"></i>',
         'OUT_OF_SERVICE': '<i class="fa-solid fa-wrench"></i>',
         'error': '<i class="fa-solid fa-triangle-exclamation"></i>'
     };
-    
+
     const icon = icons[status] || '<i class="fa-solid fa-info"></i>';
 
     entry.innerHTML = `
@@ -284,11 +336,70 @@ function addLogEntry(message, status) {
 
     log.insertBefore(entry, log.firstChild);
 
-    // Limitar el número de entradas a 50
     while (log.children.length > 50) {
         log.removeChild(log.lastChild);
     }
 }
 
+// Cotizador de tarifas
+async function calculateQuote() {
+    const minutes = parseInt(document.getElementById('pricing-minutes').value, 10);
+    const subscriber = document.getElementById('pricing-subscriber').checked;
+    const electricVehicle = document.getElementById('pricing-ev').checked;
+    const startInput = document.getElementById('pricing-start').value;
 
+    if (!minutes || minutes <= 0) {
+        alert('Introduce minutos validos');
+        return;
+    }
 
+    const payload = {
+        minutes,
+        subscriber,
+        electricVehicle,
+        startTime: startInput ? `${startInput}:00` : null
+    };
+
+    try {
+        const response = await fetch(PRICING_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            const err = await response.json();
+            renderQuoteError(err.error || 'No se pudo calcular');
+            return;
+        }
+
+        const quote = await response.json();
+        renderQuote(quote);
+    } catch (error) {
+        console.error('Error al cotizar:', error);
+        renderQuoteError('Error de conexion');
+    }
+}
+
+function renderQuote(quote) {
+    const container = document.getElementById('pricing-result');
+    container.innerHTML = `
+        <div class="quote-grid">
+            <span class="label">Base</span><span class="value">${quote.baseAmount} ${quote.currency}</span>
+            <span class="label">Recargo pico</span><span class="value">${quote.peakSurcharge} ${quote.currency}</span>
+            <span class="label">Recargo EV</span><span class="value">${quote.electricSurcharge} ${quote.currency}</span>
+            <span class="label">Descuento</span><span class="value">- ${quote.discount} ${quote.currency}</span>
+            <span class="label">Impuestos</span><span class="value">${quote.tax} ${quote.currency}</span>
+        </div>
+        <div class="quote-total">
+            <span>Total</span>
+            <span>${quote.total} ${quote.currency}</span>
+        </div>
+        <p class="muted">Pico: ${quote.peakApplied ? 'Si' : 'No'}</p>
+    `;
+}
+
+function renderQuoteError(message) {
+    const container = document.getElementById('pricing-result');
+    container.innerHTML = `<p class="muted">${message}</p>`;
+}

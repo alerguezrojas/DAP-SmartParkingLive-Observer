@@ -16,9 +16,17 @@ import java.util.Optional;
 public class ParkingService {
 
     private final ParkingLot parkingLot;
+    private final boolean mirrorFeedSize;
+    private final int maxSpots;
 
-    public ParkingService(@Value("${parking.display-spots:20}") int displaySpots) {
+    public ParkingService(
+            @Value("${parking.display-spots:20}") int displaySpots,
+            @Value("${parking.mirror-feed-size:false}") boolean mirrorFeedSize,
+            @Value("${parking.max-spots:0}") int maxSpots
+    ) {
         this.parkingLot = new ParkingLot("SmartParking Live - Data Feed", displaySpots);
+        this.mirrorFeedSize = mirrorFeedSize;
+        this.maxSpots = Math.max(0, maxSpots);
     }
 
     public ParkingLot getParkingLot() {
@@ -51,12 +59,18 @@ public class ParkingService {
             return;
         }
 
+        int targetSize = totalLots;
+        if (maxSpots > 0) {
+            targetSize = Math.min(totalLots, maxSpots);
+        }
+        if (mirrorFeedSize) {
+            parkingLot.resizeTo(targetSize);
+        }
+
         List<ParkingSpot> spots = parkingLot.getSpots();
         int capacity = spots.size();
 
-        // Ajustar a proporcionalidad para no marcar todo libre cuando el parking tiene más plazas que las que mostramos
-        double freeRatio = Math.max(0d, Math.min(1d, (double) availableLots / (double) totalLots));
-        int freeSlotsShown = (int) Math.round(freeRatio * capacity);
+        int freeSlotsShown = Math.min(Math.max(availableLots, 0), capacity);
 
         for (int i = 0; i < capacity; i++) {
             SpotStatus target = i < freeSlotsShown ? SpotStatus.FREE : SpotStatus.OCCUPIED;

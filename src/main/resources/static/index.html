@@ -51,6 +51,13 @@
                     <p>Monitorización y gestión de plazas de aparcamiento</p>
                 </div>
                 <div class="header-actions">
+                    <div class="health-status-pill" id="health-pill">
+                        <span class="pill-dot" id="health-dot"></span>
+                        <div class="pill-text">
+                            <span id="health-status-text">Sin datos</span>
+                            <small id="health-updated">Feed: -</small>
+                        </div>
+                    </div>
                     <div class="connection-status">
                         <span id="connection-indicator" class="indicator disconnected"></span>
                         <span id="connection-text">Desconectado</span>
@@ -91,6 +98,14 @@
                             <p id="out-of-service-spots" class="stat-value">0</p>
                         </div>
                     </div>
+                    <div class="stat-card health">
+                        <div class="stat-icon"><i class="fa-solid fa-heartbeat"></i></div>
+                        <div class="stat-info">
+                            <h3>Salud sistema</h3>
+                            <p id="health-status-card" class="stat-value">-</p>
+                            <small id="health-latency">Feed: -</small>
+                        </div>
+                    </div>
                 </section>
 
                 <div class="content-grid">
@@ -113,6 +128,37 @@
 
                     <!-- Sidebar Right: Controls & Logs -->
                     <div class="sidebar-right">
+                        <!-- Pricing -->
+                        <section class="pricing-section card">
+                            <div class="card-header">
+                                <h2><i class="fa-solid fa-ticket"></i> Cotizador de Tarifas</h2>
+                            </div>
+                            <div class="card-body pricing-body">
+                                <div class="control-group">
+                                    <label for="pricing-minutes">Minutos de estancia</label>
+                                    <input id="pricing-minutes" type="number" min="15" step="15" value="60">
+                                </div>
+                                <div class="control-row">
+                                    <label class="checkbox">
+                                        <input id="pricing-subscriber" type="checkbox"> Suscriptor
+                                    </label>
+                                    <label class="checkbox">
+                                        <input id="pricing-ev" type="checkbox"> Vehículo eléctrico
+                                    </label>
+                                </div>
+                                <div class="control-group">
+                                    <label for="pricing-start">Hora de inicio</label>
+                                    <input id="pricing-start" type="datetime-local">
+                                </div>
+                                <button class="btn-primary" onclick="calculateQuote()">
+                                    <i class="fa-solid fa-calculator"></i> Calcular
+                                </button>
+                                <div id="pricing-result" class="pricing-result">
+                                    <p class="muted">Introduce datos y calcula para ver el desglose.</p>
+                                </div>
+                            </div>
+                        </section>
+
                         <!-- Controls -->
                         <section class="controls-section card">
                             <div class="card-header">
