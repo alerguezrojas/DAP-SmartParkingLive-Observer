@@ -1,5 +1,6 @@
 package smartparking.service;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import smartparking.model.ParkingLot;
 import smartparking.model.ParkingSpot;
@@ -14,10 +15,10 @@ import java.util.Optional;
 @Service
 public class ParkingService {
 
-    private ParkingLot parkingLot;
+    private final ParkingLot parkingLot;
 
-    public ParkingService() {
-        this.parkingLot = new ParkingLot("SmartParking Live - ULL", 10);
+    public ParkingService(@Value("${parking.display-spots:20}") int displaySpots) {
+        this.parkingLot = new ParkingLot("SmartParking Live - Data Feed", displaySpots);
     }
 
     public ParkingLot getParkingLot() {
@@ -39,6 +40,36 @@ public class ParkingService {
             return true;
         }
         return false;
+    }
+
+    /**
+     * Actualiza el estado local a partir de datos externos de ocupación.
+     */
+    public synchronized void applyExternalSnapshot(int availableLots, int totalLots, boolean open) {
+        if (!open || totalLots <= 0) {
+            setAll(SpotStatus.OUT_OF_SERVICE);
+            return;
+        }
+
+        List<ParkingSpot> spots = parkingLot.getSpots();
+        int capacity = spots.size();
+
+        // Ajustar a proporcionalidad para no marcar todo libre cuando el parking tiene más plazas que las que mostramos
+        double freeRatio = Math.max(0d, Math.min(1d, (double) availableLots / (double) totalLots));
+        int freeSlotsShown = (int) Math.round(freeRatio * capacity);
+
+        for (int i = 0; i < capacity; i++) {
+            SpotStatus target = i < freeSlotsShown ? SpotStatus.FREE : SpotStatus.OCCUPIED;
+            spots.get(i).setStatus(target);
+        }
+    }
+
+    public synchronized void markOutOfService() {
+        setAll(SpotStatus.OUT_OF_SERVICE);
+    }
+
+    private void setAll(SpotStatus status) {
+        parkingLot.getSpots().forEach(spot -> spot.setStatus(status));
     }
 
     public ParkingStatistics getStatistics() {
@@ -85,5 +116,3 @@ public class ParkingService {
         public int getOutOfService() { return outOfService; }
     }
 }
-
-

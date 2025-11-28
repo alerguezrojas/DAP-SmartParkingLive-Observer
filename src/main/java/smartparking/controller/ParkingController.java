@@ -1,14 +1,23 @@
 package smartparking.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import smartparking.integration.CarparkSnapshot;
 import smartparking.model.ParkingSpot;
 import smartparking.model.SpotStatus;
 import smartparking.service.ParkingService;
+import smartparking.service.RealTimeParkingUpdater;
 
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Controlador REST para el sistema de parking.
@@ -18,8 +27,13 @@ import java.util.Map;
 @CrossOrigin(origins = "*")
 public class ParkingController {
 
-    @Autowired
-    private ParkingService parkingService;
+    private final ParkingService parkingService;
+    private final RealTimeParkingUpdater realTimeParkingUpdater;
+
+    public ParkingController(ParkingService parkingService, RealTimeParkingUpdater realTimeParkingUpdater) {
+        this.parkingService = parkingService;
+        this.realTimeParkingUpdater = realTimeParkingUpdater;
+    }
 
     /**
      * Obtiene todas las plazas del parking.
@@ -30,7 +44,7 @@ public class ParkingController {
     }
 
     /**
-     * Obtiene una plaza específica por ID.
+     * Obtiene una plaza especifica por ID.
      */
     @GetMapping("/spots/{id}")
     public ResponseEntity<ParkingSpot> getSpot(@PathVariable int id) {
@@ -62,16 +76,37 @@ public class ParkingController {
             }
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest()
-                    .body(Map.of("error", "Estado inválido"));
+                    .body(Map.of("error", "Estado invalido"));
         }
     }
 
     /**
-     * Obtiene las estadísticas del parking.
+     * Obtiene las estadisticas del parking.
      */
     @GetMapping("/statistics")
     public ResponseEntity<ParkingService.ParkingStatistics> getStatistics() {
         return ResponseEntity.ok(parkingService.getStatistics());
+    }
+
+    /**
+     * Devuelve el ultimo snapshot de la fuente en tiempo real.
+     */
+    @GetMapping("/feed")
+    public ResponseEntity<Map<String, Object>> getFeedSnapshot() {
+        Optional<CarparkSnapshot> snapshot = realTimeParkingUpdater.getLastSnapshot();
+        return ResponseEntity.ok(
+                snapshot.<Map<String, Object>>map(s -> Map.of(
+                        "carparkNumber", s.carparkNumber(),
+                        "availableLots", s.availableLots(),
+                        "totalLots", s.totalLots(),
+                        "open", s.open(),
+                        "updatedAt", DateTimeFormatter.ISO_INSTANT.format(s.updatedAt()),
+                        "source", "data.gov.sg/transport/carpark-availability"
+                )).orElseGet(() -> Map.of(
+                        "message", "Sin datos en vivo todavia",
+                        "source", "data.gov.sg/transport/carpark-availability"
+                ))
+        );
     }
 }
 
