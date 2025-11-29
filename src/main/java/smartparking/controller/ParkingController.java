@@ -15,6 +15,7 @@ import smartparking.model.ParkingSpot;
 import smartparking.model.SpotStatus;
 import smartparking.service.MonitoringService;
 import smartparking.service.ParkingActivityLog;
+import smartparking.service.ParkingHistoryService;
 import smartparking.service.ParkingService;
 import smartparking.service.PricingService;
 import smartparking.service.RealTimeParkingUpdater;
@@ -38,19 +39,22 @@ public class ParkingController {
     private final ParkingActivityLog parkingActivityLog;
     private final MonitoringService monitoringService;
     private final PricingService pricingService;
+    private final ParkingHistoryService parkingHistoryService;
 
     public ParkingController(
             ParkingService parkingService,
             RealTimeParkingUpdater realTimeParkingUpdater,
             ParkingActivityLog parkingActivityLog,
             MonitoringService monitoringService,
-            PricingService pricingService
+            PricingService pricingService,
+            ParkingHistoryService parkingHistoryService
     ) {
         this.parkingService = parkingService;
         this.realTimeParkingUpdater = realTimeParkingUpdater;
         this.parkingActivityLog = parkingActivityLog;
         this.monitoringService = monitoringService;
         this.pricingService = pricingService;
+        this.parkingHistoryService = parkingHistoryService;
     }
 
     /**
@@ -155,5 +159,13 @@ public class ParkingController {
             @RequestParam(defaultValue = "false") boolean electric
     ) {
         return ResponseEntity.ok(pricingService.calculateQuote(minutes, subscriber, electric));
+    }
+
+    /**
+     * Obtiene el historial de ocupación.
+     */
+    @GetMapping("/history")
+    public ResponseEntity<List<ParkingHistoryService.HistoryPoint>> getHistory() {
+        return ResponseEntity.ok(parkingHistoryService.getHistory());
     }
 }

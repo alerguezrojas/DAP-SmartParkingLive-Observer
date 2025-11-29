@@ -9,14 +9,17 @@ smartparking\pricing\PricingRequest.class
 smartparking\service\MonitoringService$HealthSnapshot.class
 smartparking\observers\WebSocketObserver.class
 smartparking\integration\SingaporeCarparkClient$CarparkAvailabilityResponse.class
+smartparking\service\ParkingHistoryService.class
 smartparking\controller\ParkingController.class
 smartparking\controller\PricingController.class
+smartparking\service\ParkingHistoryService$HistoryPoint.class
 smartparking\pricing\PricingStrategy.class
 smartparking\observers\MobileNotifierObserver.class
 smartparking\model\SpotStatus.class
 smartparking\integration\SingaporeCarparkClient$CarparkInfo.class
 smartparking\observers\WebDashboardObserver.class
 smartparking\integration\SingaporeCarparkClient$Item.class
+smartparking\service\ParkingHistoryService$1.class
 smartparking\integration\CarparkSnapshot.class
 smartparking\observer\ParkingObserver.class
 smartparking\observers\StatisticsModuleObserver.class

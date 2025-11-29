@@ -15,6 +15,8 @@
     
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Chart.js Date Adapter -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -115,13 +117,21 @@
                 </section>
 
                 <!-- Charts Section -->
-                <section class="charts-section" style="margin-bottom: 2rem;">
+                <section class="charts-section" style="margin-bottom: 2rem; display: grid; grid-template-columns: 1fr 2fr; gap: 1.5rem;">
                     <div class="card chart-card" style="padding: 1.5rem;">
                         <div class="card-header" style="margin-bottom: 1rem;">
-                            <h3><i class="fa-solid fa-chart-pie"></i> Distribución de Plazas</h3>
+                            <h3><i class="fa-solid fa-chart-pie"></i> Distribución Actual</h3>
                         </div>
                         <div class="card-body" style="height: 300px; position: relative;">
                             <canvas id="parkingChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="card chart-card" style="padding: 1.5rem;">
+                        <div class="card-header" style="margin-bottom: 1rem;">
+                            <h3><i class="fa-solid fa-chart-line"></i> Histórico Completo</h3>
+                        </div>
+                        <div class="card-body" style="height: 300px; position: relative;">
+                            <canvas id="historyChart"></canvas>
                         </div>
                     </div>
                 </section>

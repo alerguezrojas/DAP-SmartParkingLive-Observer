@@ -8,17 +8,21 @@ const PRICING_URL = `${API_URL}/quote`;
 let stompClient = null;
 let spots = [];
 let parkingChart = null;
+let historyChart = null;
 
 // Inicializar la aplicacion
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Iniciando SmartParking Live Dashboard...');
     initChart();
+    initHistoryChart();
     loadParkingData();
+    loadHistory();
     connectWebSocket();
     loadHealth();
     loadEvents();
     setInterval(loadHealth, 30000);
     setInterval(loadEvents, 20000);
+    setInterval(loadHistory, 60000); // Actualizar historial cada minuto
 });
 
 function initChart() {
@@ -43,6 +47,99 @@ function initChart() {
             }
         }
     });
+}
+
+function initHistoryChart() {
+    const ctx = document.getElementById('historyChart').getContext('2d');
+    historyChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            datasets: [
+                {
+                    label: 'Ocupadas',
+                    data: [],
+                    borderColor: '#ef4444',
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 0,
+                    pointHoverRadius: 6
+                },
+                {
+                    label: 'Libres',
+                    data: [],
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 0,
+                    pointHoverRadius: 6
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            plugins: {
+                legend: {
+                    position: 'top'
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false
+                }
+            },
+            scales: {
+                x: {
+                    type: 'time',
+                    time: {
+                        unit: 'minute',
+                        displayFormats: {
+                            minute: 'HH:mm'
+                        },
+                        tooltipFormat: 'HH:mm'
+                    },
+                    grid: {
+                        display: false
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: '#f3f4f6'
+                    }
+                }
+            }
+        }
+    });
+}
+
+async function loadHistory() {
+    try {
+        const response = await fetch(`${API_URL}/history`);
+        if (response.ok) {
+            const history = await response.json();
+            updateHistoryChart(history);
+        }
+    } catch (error) {
+        console.error('Error cargando historial:', error);
+    }
+}
+
+function updateHistoryChart(history) {
+    if (!historyChart) return;
+
+    // Mapear a formato {x, y} para escala de tiempo
+    const occupiedData = history.map(h => ({x: h.timestamp, y: h.occupied}));
+    const freeData = history.map(h => ({x: h.timestamp, y: h.free}));
+
+    historyChart.data.datasets[0].data = occupiedData;
+    historyChart.data.datasets[1].data = freeData;
+    historyChart.update();
 }
 
 // Cargar datos del parking
