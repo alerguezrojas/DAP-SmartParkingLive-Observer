@@ -1,7 +1,7 @@
 package smartparking.service;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import smartparking.config.ParkingProperties;
 import smartparking.model.ParkingLot;
 import smartparking.model.ParkingSpot;
 import smartparking.model.SpotStatus;
@@ -16,17 +16,11 @@ import java.util.Optional;
 public class ParkingService {
 
     private final ParkingLot parkingLot;
-    private final boolean mirrorFeedSize;
-    private final int maxSpots;
+    private final ParkingProperties properties;
 
-    public ParkingService(
-            @Value("${parking.display-spots:20}") int displaySpots,
-            @Value("${parking.mirror-feed-size:false}") boolean mirrorFeedSize,
-            @Value("${parking.max-spots:0}") int maxSpots
-    ) {
-        this.parkingLot = new ParkingLot("SmartParking Live - Data Feed", displaySpots);
-        this.mirrorFeedSize = mirrorFeedSize;
-        this.maxSpots = Math.max(0, maxSpots);
+    public ParkingService(ParkingProperties properties) {
+        this.properties = properties;
+        this.parkingLot = new ParkingLot("SmartParking Live - Data Feed", properties.getDisplaySpots());
     }
 
     public ParkingLot getParkingLot() {
@@ -60,10 +54,10 @@ public class ParkingService {
         }
 
         int targetSize = totalLots;
-        if (maxSpots > 0) {
-            targetSize = Math.min(totalLots, maxSpots);
+        if (properties.getMaxSpots() > 0) {
+            targetSize = Math.min(totalLots, properties.getMaxSpots());
         }
-        if (mirrorFeedSize) {
+        if (properties.isMirrorFeedSize()) {
             parkingLot.resizeTo(targetSize);
         }
 

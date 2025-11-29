@@ -13,10 +13,16 @@
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="app-container">
+        <!-- Toast Container -->
+        <div id="toast-container" class="toast-container"></div>
+
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-header">
@@ -104,6 +110,18 @@
                             <h3>Salud sistema</h3>
                             <p id="health-status-card" class="stat-value">-</p>
                             <small id="health-latency">Feed: -</small>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Charts Section -->
+                <section class="charts-section" style="margin-bottom: 2rem;">
+                    <div class="card chart-card" style="padding: 1.5rem;">
+                        <div class="card-header" style="margin-bottom: 1rem;">
+                            <h3><i class="fa-solid fa-chart-pie"></i> Distribución de Plazas</h3>
+                        </div>
+                        <div class="card-body" style="height: 300px; position: relative;">
+                            <canvas id="parkingChart"></canvas>
                         </div>
                     </div>
                 </section>

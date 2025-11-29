@@ -3,14 +3,16 @@ const API_URL = 'http://localhost:8080/api/parking';
 const WS_URL = 'http://localhost:8080/ws-parking';
 const EVENTS_URL = `${API_URL}/events`;
 const HEALTH_URL = `${API_URL}/health`;
-const PRICING_URL = `${API_URL}/pricing/quote`;
+const PRICING_URL = `${API_URL}/quote`;
 
 let stompClient = null;
 let spots = [];
+let parkingChart = null;
 
 // Inicializar la aplicacion
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Iniciando SmartParking Live Dashboard...');
+    initChart();
     loadParkingData();
     connectWebSocket();
     loadHealth();
@@ -18,6 +20,30 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(loadHealth, 30000);
     setInterval(loadEvents, 20000);
 });
+
+function initChart() {
+    const ctx = document.getElementById('parkingChart').getContext('2d');
+    parkingChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Libres', 'Ocupadas', 'Mantenimiento'],
+            datasets: [{
+                data: [0, 0, 0],
+                backgroundColor: ['#10b981', '#ef4444', '#f59e0b'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+}
 
 // Cargar datos del parking
 async function loadParkingData() {
@@ -44,6 +70,11 @@ function updateStatistics(stats) {
     document.getElementById('free-spots').textContent = stats.free;
     document.getElementById('occupied-spots').textContent = stats.occupied;
     document.getElementById('out-of-service-spots').textContent = stats.outOfService;
+
+    if (parkingChart) {
+        parkingChart.data.datasets[0].data = [stats.free, stats.occupied, stats.outOfService];
+        parkingChart.update();
+    }
 }
 
 // Renderizar el grid de plazas
@@ -107,6 +138,11 @@ function updateSpotInGrid(spotId, newStatus) {
         spotElement.querySelector('.spot-status').textContent = statusText[newStatus];
         spotElement.querySelector('.spot-icon').innerHTML = icons[newStatus];
 
+        // Show toast
+        const toastType = newStatus === 'FREE' ? 'success' : (newStatus === 'OCCUPIED' ? 'warning' : 'error');
+        const toastMsg = newStatus === 'FREE' ? 'ahora está libre' : (newStatus === 'OCCUPIED' ? 'ha sido ocupada' : 'está en mantenimiento');
+        showToast(`Plaza ${spotId}`, `La plaza ${spotId} ${toastMsg}`, toastType);
+
         spotElement.style.animation = 'none';
         setTimeout(() => {
             spotElement.style.animation = 'pulse 0.5s ease';
@@ -161,15 +197,18 @@ async function updateSpotStatus() {
             const result = await response.json();
             console.log('Estado actualizado:', result);
 
-            updateSpotInGrid(spotId, status);
+            // No actualizamos la UI manualmente aqui para evitar duplicados.
+            // Esperamos a que el WebSocket nos notifique el cambio (Patron Observer).
+            
+            // updateSpotInGrid(spotId, status); 
+            
+            // const statusText = {
+            //     'FREE': 'Libre',
+            //     'OCCUPIED': 'Ocupada',
+            //     'OUT_OF_SERVICE': 'Mantenimiento'
+            // };
 
-            const statusText = {
-                'FREE': 'Libre',
-                'OCCUPIED': 'Ocupada',
-                'OUT_OF_SERVICE': 'Mantenimiento'
-            };
-
-            addLogEntry(`Plaza ${spotId} cambiada a ${statusText[status]}`, status);
+            // addLogEntry(`Plaza ${spotId} cambiada a ${statusText[status]}`, status);
             loadStatistics();
             loadEvents();
         } else {
@@ -190,6 +229,7 @@ function connectWebSocket() {
     stompClient.connect({}, () => {
         console.log('WebSocket conectado');
         updateConnectionStatus(true);
+        showToast('Conectado', 'Conexión en tiempo real establecida', 'success');
 
         stompClient.subscribe('/topic/parking-updates', (message) => {
             const update = JSON.parse(message.body);
@@ -198,6 +238,7 @@ function connectWebSocket() {
     }, (error) => {
         console.error('Error de WebSocket:', error);
         updateConnectionStatus(false);
+        showToast('Desconectado', 'Se perdió la conexión con el servidor', 'error');
         setTimeout(connectWebSocket, 5000);
     });
 }
@@ -361,10 +402,15 @@ async function calculateQuote() {
     };
 
     try {
-        const response = await fetch(PRICING_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+        const minutes = document.getElementById('pricing-minutes').value;
+        const subscriber = document.getElementById('pricing-subscriber').checked;
+        const electric = document.getElementById('pricing-ev').checked;
+
+        const url = `${PRICING_URL}?minutes=${minutes}&subscriber=${subscriber}&electric=${electric}`;
+
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
         });
 
         if (!response.ok) {
@@ -402,4 +448,35 @@ function renderQuote(quote) {
 function renderQuoteError(message) {
     const container = document.getElementById('pricing-result');
     container.innerHTML = `<p class="muted">${message}</p>`;
+}
+
+// Toast Notifications
+function showToast(title, message, type = 'info') {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    
+    const icons = {
+        'success': 'fa-circle-check',
+        'error': 'fa-circle-xmark',
+        'warning': 'fa-triangle-exclamation',
+        'info': 'fa-circle-info'
+    };
+
+    toast.innerHTML = `
+        <i class="fa-solid ${icons[type]} toast-icon"></i>
+        <div class="toast-content">
+            <div class="toast-title">${title}</div>
+            <div class="toast-message">${message}</div>
+        </div>
+        <button class="toast-close" onclick="this.parentElement.remove()"><i class="fa-solid fa-xmark"></i></button>
+    `;
+
+    container.appendChild(toast);
+
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        toast.style.animation = 'fadeOut 0.3s ease-out forwards';
+        setTimeout(() => toast.remove(), 300);
+    }, 5000);
 }

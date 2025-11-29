@@ -2,9 +2,9 @@ package smartparking.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import smartparking.config.ParkingProperties;
 import smartparking.integration.CarparkSnapshot;
 import smartparking.integration.SingaporeCarparkClient;
 
@@ -21,18 +21,18 @@ public class RealTimeParkingUpdater {
 
     private final SingaporeCarparkClient client;
     private final ParkingService parkingService;
-    private final String carparkNumber;
+    private final ParkingProperties properties;
 
     private volatile CarparkSnapshot lastSnapshot;
 
     public RealTimeParkingUpdater(
             SingaporeCarparkClient client,
             ParkingService parkingService,
-            @Value("${parking.carpark-number:}") String carparkNumber
+            ParkingProperties properties
     ) {
         this.client = client;
         this.parkingService = parkingService;
-        this.carparkNumber = carparkNumber;
+        this.properties = properties;
     }
 
     @PostConstruct
@@ -42,7 +42,7 @@ public class RealTimeParkingUpdater {
 
     @Scheduled(fixedDelayString = "${parking.update-interval-ms:30000}")
     public void refreshFromFeed() {
-        Optional<CarparkSnapshot> snapshot = client.fetchSnapshot(carparkNumber);
+        Optional<CarparkSnapshot> snapshot = client.fetchSnapshot(properties.getCarparkNumber());
 
         snapshot.ifPresentOrElse(
                 this::applySnapshot,

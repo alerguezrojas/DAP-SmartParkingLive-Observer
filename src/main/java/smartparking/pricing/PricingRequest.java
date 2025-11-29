@@ -9,6 +9,7 @@ public record PricingRequest(
         int minutes,
         boolean subscriber,
         boolean electricVehicle,
-        LocalDateTime startTime
+        LocalDateTime startTime,
+        double occupancyRate
 ) {
 }

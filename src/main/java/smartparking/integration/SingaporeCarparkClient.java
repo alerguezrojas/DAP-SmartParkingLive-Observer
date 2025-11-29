@@ -4,9 +4,8 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClient;
 
 import java.time.Instant;
 import java.util.Comparator;
@@ -19,18 +18,17 @@ public class SingaporeCarparkClient {
     private static final Logger log = LoggerFactory.getLogger(SingaporeCarparkClient.class);
     private static final String ENDPOINT = "https://api.data.gov.sg/v1/transport/carpark-availability";
 
-    private final RestTemplate restTemplate;
+    private final RestClient restClient;
 
-    public SingaporeCarparkClient(RestTemplateBuilder restTemplateBuilder) {
-        this.restTemplate = restTemplateBuilder.build();
+    public SingaporeCarparkClient(RestClient.Builder restClientBuilder) {
+        this.restClient = restClientBuilder.baseUrl(ENDPOINT).build();
     }
 
     public Optional<CarparkSnapshot> fetchSnapshot(String preferredCarparkNumber) {
         try {
-            CarparkAvailabilityResponse response = restTemplate.getForObject(
-                    ENDPOINT,
-                    CarparkAvailabilityResponse.class
-            );
+            CarparkAvailabilityResponse response = restClient.get()
+                    .retrieve()
+                    .body(CarparkAvailabilityResponse.class);
 
             if (response == null || response.items() == null || response.items().isEmpty()) {
                 return Optional.empty();

@@ -16,7 +16,9 @@ import smartparking.model.SpotStatus;
 import smartparking.service.MonitoringService;
 import smartparking.service.ParkingActivityLog;
 import smartparking.service.ParkingService;
+import smartparking.service.PricingService;
 import smartparking.service.RealTimeParkingUpdater;
+import smartparking.pricing.PricingQuote;
 
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -35,17 +37,20 @@ public class ParkingController {
     private final RealTimeParkingUpdater realTimeParkingUpdater;
     private final ParkingActivityLog parkingActivityLog;
     private final MonitoringService monitoringService;
+    private final PricingService pricingService;
 
     public ParkingController(
             ParkingService parkingService,
             RealTimeParkingUpdater realTimeParkingUpdater,
             ParkingActivityLog parkingActivityLog,
-            MonitoringService monitoringService
+            MonitoringService monitoringService,
+            PricingService pricingService
     ) {
         this.parkingService = parkingService;
         this.realTimeParkingUpdater = realTimeParkingUpdater;
         this.parkingActivityLog = parkingActivityLog;
         this.monitoringService = monitoringService;
+        this.pricingService = pricingService;
     }
 
     /**
@@ -138,5 +143,17 @@ public class ParkingController {
     @GetMapping("/health")
     public ResponseEntity<MonitoringService.HealthSnapshot> getHealth() {
         return ResponseEntity.ok(monitoringService.getHealthSnapshot());
+    }
+
+    /**
+     * Calcula una cotización de precio basada en la ocupación actual.
+     */
+    @GetMapping("/quote")
+    public ResponseEntity<PricingQuote> getQuote(
+            @RequestParam(defaultValue = "60") int minutes,
+            @RequestParam(defaultValue = "false") boolean subscriber,
+            @RequestParam(defaultValue = "false") boolean electric
+    ) {
+        return ResponseEntity.ok(pricingService.calculateQuote(minutes, subscriber, electric));
     }
 }

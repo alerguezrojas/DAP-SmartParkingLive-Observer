@@ -48,7 +48,7 @@ public class DynamicPricingStrategy implements PricingStrategy {
         double hours = effectiveMinutes / 60.0;
         double baseAmount = hours * baseRatePerHour;
 
-        boolean peak = isPeak(startTime.toLocalTime());
+        boolean peak = isPeak(startTime.toLocalTime(), request.occupancyRate());
         double peakSurcharge = peak ? baseAmount * (peakMultiplier - 1.0) : 0;
         double evSurcharge = request.electricVehicle() ? electricSurcharge : 0;
 
@@ -71,7 +71,10 @@ public class DynamicPricingStrategy implements PricingStrategy {
         );
     }
 
-    private boolean isPeak(LocalTime time) {
+    private boolean isPeak(LocalTime time, double occupancyRate) {
+        if (occupancyRate > 0.80) {
+            return true;
+        }
         for (PeakRange range : peakRanges) {
             if (range.includes(time)) {
                 return true;
