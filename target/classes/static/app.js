@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initChart();
     initHistoryChart();
     loadParkingData();
+    loadParkingList();
     loadHistory();
     connectWebSocket();
     loadHealth();
@@ -143,6 +144,62 @@ function updateHistoryChart(history) {
 }
 
 // Cargar datos del parking
+function loadParkingList() {
+    fetch(`${API_URL}/list`)
+        .then(response => response.json())
+        .then(data => {
+            const selector = document.getElementById('parking-selector');
+            selector.innerHTML = '<option value="" disabled>Seleccionar Parking</option>';
+            
+            // Sort by ID
+            data.sort((a, b) => a.id.localeCompare(b.id));
+
+            data.forEach(p => {
+                const option = document.createElement('option');
+                option.value = p.id;
+                option.textContent = `${p.id} (Libres: ${p.availableLots})`;
+                selector.appendChild(option);
+            });
+
+            // Set current active parking
+            fetch(`${API_URL}/feed`)
+                .then(res => res.json())
+                .then(feed => {
+                    if (feed && feed.carparkNumber) {
+                        selector.value = feed.carparkNumber;
+                    }
+                })
+                .catch(e => console.log("No active feed yet"));
+
+            // Remove old listeners to avoid duplicates if called multiple times
+            const newSelector = selector.cloneNode(true);
+            selector.parentNode.replaceChild(newSelector, selector);
+            
+            newSelector.addEventListener('change', (e) => {
+                const selectedId = e.target.value;
+                selectParking(selectedId);
+            });
+        })
+        .catch(err => console.error('Error cargando lista de parkings:', err));
+}
+
+function selectParking(id) {
+    fetch(`${API_URL}/select/${id}`, { method: 'POST' })
+        .then(response => {
+            if (response.ok) {
+                showToast(`Parking ${id} seleccionado`, 'success');
+                // Reload everything
+                loadParkingData();
+                loadHistory(); 
+                loadHealth();
+                loadEvents();
+            } else {
+                showToast('Error seleccionando parking', 'error');
+            }
+        })
+        .catch(err => showToast('Error de conexión', 'error'));
+}
+
 async function loadParkingData() {
     try {
         const statsResponse = await fetch(`${API_URL}/statistics`);
@@ -167,6 +224,12 @@ function updateStatistics(stats) {
     document.getElementById('free-spots').textContent = stats.free;
     document.getElementById('occupied-spots').textContent = stats.occupied;
     document.getElementById('out-of-service-spots').textContent = stats.outOfService;
+
+    // Si el numero total de plazas ha cambiado, recargar el grid
+    if (spots && spots.length !== stats.total) {
+        console.log(`Detectado cambio en capacidad: ${spots.length} -> ${stats.total}. Recargando grid...`);
+        loadParkingData();
+    }
 
     if (parkingChart) {
         parkingChart.data.datasets[0].data = [stats.free, stats.occupied, stats.outOfService];

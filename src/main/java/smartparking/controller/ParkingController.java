@@ -117,18 +117,46 @@ public class ParkingController {
     public ResponseEntity<Map<String, Object>> getFeedSnapshot() {
         Optional<CarparkSnapshot> snapshot = realTimeParkingUpdater.getLastSnapshot();
         return ResponseEntity.ok(
-                snapshot.<Map<String, Object>>map(s -> Map.of(
+                snapshot.<Map<String, Object>>map(s -> {
+                    int total = s.types().stream().mapToInt(t -> t.totalLots()).sum();
+                    int available = s.types().stream().mapToInt(t -> t.availableLots()).sum();
+                    return Map.of(
                         "carparkNumber", s.carparkNumber(),
-                        "availableLots", s.availableLots(),
-                        "totalLots", s.totalLots(),
-                        "open", s.open(),
+                        "availableLots", available,
+                        "totalLots", total,
+                        "open", true,
                         "updatedAt", DateTimeFormatter.ISO_INSTANT.format(s.updatedAt()),
-                        "source", "data.gov.sg/transport/carpark-availability"
-                )).orElseGet(() -> Map.of(
+                        "source", "data.gov.sg/transport/carpark-availability",
+                        "types", s.types()
+                    );
+                }).orElseGet(() -> Map.of(
                         "message", "Sin datos en vivo todavia",
                         "source", "data.gov.sg/transport/carpark-availability"
                 ))
         );
+    }
+
+    @GetMapping("/list")
+    public List<Map<String, Object>> listAllCarparks() {
+        return realTimeParkingUpdater.getAllSnapshots().stream()
+            .map(s -> {
+                Map<String, Object> map = new java.util.HashMap<>();
+                map.put("id", s.carparkNumber());
+                map.put("totalLots", s.types().stream().mapToInt(t -> t.totalLots()).sum());
+                map.put("availableLots", s.types().stream().mapToInt(t -> t.availableLots()).sum());
+                return map;
+            })
+            .collect(java.util.stream.Collectors.toList());
+    }
+
+    @org.springframework.web.bind.annotation.PostMapping("/select/{id}")
+    public ResponseEntity<?> selectCarpark(@PathVariable String id) {
+        boolean success = realTimeParkingUpdater.setActiveCarpark(id);
+        if (success) {
+            return ResponseEntity.ok().build();
+        } else {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     /**

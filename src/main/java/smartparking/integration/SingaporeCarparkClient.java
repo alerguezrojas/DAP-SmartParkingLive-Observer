@@ -24,59 +24,46 @@ public class SingaporeCarparkClient {
         this.restClient = restClientBuilder.baseUrl(ENDPOINT).build();
     }
 
-    public Optional<CarparkSnapshot> fetchSnapshot(String preferredCarparkNumber) {
+    public List<CarparkSnapshot> fetchAll() {
         try {
             CarparkAvailabilityResponse response = restClient.get()
                     .retrieve()
                     .body(CarparkAvailabilityResponse.class);
 
             if (response == null || response.items() == null || response.items().isEmpty()) {
-                return Optional.empty();
+                return List.of();
             }
 
             List<CarparkData> data = response.items().get(0).carparkData();
             if (data == null || data.isEmpty()) {
-                return Optional.empty();
+                return List.of();
             }
 
-            CarparkData selected = selectCarpark(data, preferredCarparkNumber);
-            if (selected == null || selected.carparkInfo() == null || selected.carparkInfo().isEmpty()) {
-                return Optional.empty();
-            }
+            return data.stream()
+                    .map(this::mapToSnapshot)
+                    .toList();
 
-            CarparkInfo info = selected.carparkInfo().get(0);
-            int totalLots = toInt(info.totalLots());
-            int availableLots = toInt(info.lotsAvailable());
-            boolean open = !"CLOSED".equalsIgnoreCase(selected.status());
-            Instant updatedAt = parseInstant(selected.updateDateTime());
-
-            return Optional.of(new CarparkSnapshot(
-                    selected.carparkNumber(),
-                    totalLots,
-                    availableLots,
-                    open,
-                    updatedAt
-            ));
         } catch (Exception ex) {
             log.warn("No se pudo obtener disponibilidad en vivo: {}", ex.getMessage());
-            return Optional.empty();
+            return List.of();
         }
     }
 
-    private CarparkData selectCarpark(List<CarparkData> data, String preferredCarparkNumber) {
-        if (preferredCarparkNumber != null && !preferredCarparkNumber.isBlank()) {
-            return data.stream()
-                    .filter(d -> preferredCarparkNumber.equalsIgnoreCase(d.carparkNumber()))
-                    .findFirst()
-                    .orElse(null);
-        }
+    private CarparkSnapshot mapToSnapshot(CarparkData data) {
+        Instant updatedAt = parseInstant(data.updateDateTime());
+        List<CarparkSnapshot.CarparkTypeInfo> types = data.carparkInfo().stream()
+                .map(info -> new CarparkSnapshot.CarparkTypeInfo(
+                        info.lotType(),
+                        toInt(info.totalLots()),
+                        toInt(info.lotsAvailable())
+                ))
+                .toList();
 
-        // Fallback: el primero que esté abierto y tenga datos
-        return data.stream()
-                .filter(d -> d.carparkInfo() != null && !d.carparkInfo().isEmpty())
-                .sorted(Comparator.comparing(CarparkData::carparkNumber))
-                .findFirst()
-                .orElse(null);
+        return new CarparkSnapshot(
+                data.carparkNumber(),
+                updatedAt,
+                types
+        );
     }
 
     private int toInt(String value) {

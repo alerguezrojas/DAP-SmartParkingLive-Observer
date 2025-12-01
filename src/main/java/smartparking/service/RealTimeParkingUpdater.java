@@ -24,6 +24,8 @@ public class RealTimeParkingUpdater {
     private final ParkingProperties properties;
 
     private volatile CarparkSnapshot lastSnapshot;
+    private volatile java.util.List<CarparkSnapshot> allSnapshots = java.util.Collections.emptyList();
+    private volatile String activeCarparkId;
 
     public RealTimeParkingUpdater(
             SingaporeCarparkClient client,
@@ -42,29 +44,54 @@ public class RealTimeParkingUpdater {
 
     @Scheduled(fixedDelayString = "${parking.update-interval-ms:30000}")
     public void refreshFromFeed() {
-        Optional<CarparkSnapshot> snapshot = client.fetchSnapshot(properties.getCarparkNumber());
+        var snapshots = client.fetchAll();
+        this.allSnapshots = snapshots;
+        
+        if (snapshots.isEmpty()) {
+            log.warn("No hay datos en vivo, marcando todas las plazas como fuera de servicio");
+            parkingService.markOutOfService();
+            return;
+        }
 
-        snapshot.ifPresentOrElse(
-                this::applySnapshot,
-                () -> {
-                    log.warn("No hay datos en vivo, marcando todas las plazas como fuera de servicio");
-                    parkingService.markOutOfService();
-                }
-        );
-    }
+        // Por defecto usamos el primer parking o el configurado
+        String target = activeCarparkId;
+        if (target == null) target = properties.getCarparkNumber();
 
-    private void applySnapshot(CarparkSnapshot snapshot) {
-        lastSnapshot = snapshot;
-        parkingService.applyExternalSnapshot(
-                snapshot.availableLots(),
-                snapshot.totalLots(),
-                snapshot.open()
-        );
-        log.debug("Feed {} => libres {}/{} (open: {}) at {}", snapshot.carparkNumber(),
-                snapshot.availableLots(), snapshot.totalLots(), snapshot.open(), snapshot.updatedAt());
+        String finalTarget = target;
+        CarparkSnapshot selected = snapshots.stream()
+                .filter(s -> finalTarget == null || finalTarget.isBlank() || s.carparkNumber().equalsIgnoreCase(finalTarget))
+                .findFirst()
+                .orElse(snapshots.get(0));
+
+        this.lastSnapshot = selected;
+        parkingService.applyExternalSnapshot(selected);
+        
+        log.info("Actualizado estado desde feed para parking {}: {} libres / {} total", 
+                selected.carparkNumber(), 
+                selected.types().stream().mapToInt(t -> t.availableLots()).sum(),
+                selected.types().stream().mapToInt(t -> t.totalLots()).sum());
     }
 
     public Optional<CarparkSnapshot> getLastSnapshot() {
         return Optional.ofNullable(lastSnapshot);
+    }
+
+    public java.util.List<CarparkSnapshot> getAllSnapshots() {
+        return allSnapshots;
+    }
+
+    public boolean setActiveCarpark(String carparkId) {
+        Optional<CarparkSnapshot> found = allSnapshots.stream()
+            .filter(s -> s.carparkNumber().equalsIgnoreCase(carparkId))
+            .findFirst();
+            
+        if (found.isPresent()) {
+            this.activeCarparkId = carparkId;
+            this.lastSnapshot = found.get();
+            parkingService.applyExternalSnapshot(found.get());
+            log.info("Cambiado parking activo a: {}", carparkId);
+            return true;
+        }
+        return false;
     }
 }

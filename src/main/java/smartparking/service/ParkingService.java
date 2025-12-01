@@ -2,6 +2,7 @@ package smartparking.service;
 
 import org.springframework.stereotype.Service;
 import smartparking.config.ParkingProperties;
+import smartparking.integration.CarparkSnapshot;
 import smartparking.model.ParkingLot;
 import smartparking.model.ParkingSpot;
 import smartparking.model.SpotStatus;
@@ -47,8 +48,16 @@ public class ParkingService {
     /**
      * Actualiza el estado local a partir de datos externos de ocupación.
      */
-    public synchronized void applyExternalSnapshot(int availableLots, int totalLots, boolean open) {
-        if (!open || totalLots <= 0) {
+    public synchronized void applyExternalSnapshot(CarparkSnapshot snapshot) {
+        if (snapshot == null) {
+            return;
+        }
+
+        // Sumarizamos todos los tipos para la visualizacion general
+        int totalLots = snapshot.types().stream().mapToInt(t -> t.totalLots()).sum();
+        int availableLots = snapshot.types().stream().mapToInt(t -> t.availableLots()).sum();
+
+        if (totalLots <= 0) {
             setAll(SpotStatus.OUT_OF_SERVICE);
             return;
         }

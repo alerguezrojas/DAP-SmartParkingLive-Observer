@@ -1,6 +1,7 @@
 smartparking\service\RealTimeParkingUpdater.class
 smartparking\observers\ActivityLogObserver.class
 smartparking\service\PricingService.class
+smartparking\integration\CarparkSnapshot$CarparkTypeInfo.class
 smartparking\SmartParkingApplication.class
 smartparking\service\ParkingService$ParkingStatistics.class
 smartparking\integration\SingaporeCarparkClient.class
@@ -31,6 +32,7 @@ smartparking\integration\SingaporeCarparkClient$CarparkData.class
 smartparking\service\ParkingService.class
 smartparking\config\ParkingProperties.class
 smartparking\pricing\DynamicPricingStrategy.class
+smartparking\service\ParkingHistoryService$2.class
 smartparking\pricing\DynamicPricingStrategy$PeakRange.class
 smartparking\model\ParkingLot.class
 smartparking\observers\SecurityModuleObserver.class

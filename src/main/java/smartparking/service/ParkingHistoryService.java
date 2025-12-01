@@ -17,18 +17,22 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
+import java.util.Map;
+import java.util.HashMap;
+
 @Service
 public class ParkingHistoryService {
 
     private final ParkingService parkingService;
-    private final List<HistoryPoint> history = Collections.synchronizedList(new LinkedList<>());
-    // Eliminamos el limite para guardar todo el historico
-    // private static final int MAX_HISTORY_POINTS = 1440; 
+    private final RealTimeParkingUpdater realTimeParkingUpdater;
+    private final Map<String, List<HistoryPoint>> historyMap = java.util.Collections.synchronizedMap(new HashMap<>());
+    
     private static final String HISTORY_FILE = "parking-history.json";
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public ParkingHistoryService(ParkingService parkingService) {
+    public ParkingHistoryService(ParkingService parkingService, @org.springframework.context.annotation.Lazy RealTimeParkingUpdater realTimeParkingUpdater) {
         this.parkingService = parkingService;
+        this.realTimeParkingUpdater = realTimeParkingUpdater;
         objectMapper.registerModule(new JavaTimeModule());
     }
 
@@ -37,11 +41,17 @@ public class ParkingHistoryService {
         File file = new File(HISTORY_FILE);
         if (file.exists()) {
             try {
-                List<HistoryPoint> loaded = objectMapper.readValue(file, new TypeReference<List<HistoryPoint>>() {});
-                history.addAll(loaded);
-                System.out.println("Historial cargado: " + loaded.size() + " puntos.");
+                Map<String, List<HistoryPoint>> loaded = objectMapper.readValue(file, new TypeReference<Map<String, List<HistoryPoint>>>() {});
+                historyMap.putAll(loaded);
+                System.out.println("Historial cargado: " + loaded.size() + " parkings.");
             } catch (IOException e) {
-                System.err.println("No se pudo cargar el historial: " + e.getMessage());
+                try {
+                    List<HistoryPoint> oldList = objectMapper.readValue(file, new TypeReference<List<HistoryPoint>>() {});
+                    historyMap.put("LEGACY", oldList);
+                    System.out.println("Historial legado cargado.");
+                } catch (IOException ex) {
+                    System.err.println("No se pudo cargar el historial: " + ex.getMessage());
+                }
             }
         }
     }
@@ -49,8 +59,8 @@ public class ParkingHistoryService {
     @PreDestroy
     public void saveHistory() {
         try {
-            synchronized (history) {
-                objectMapper.writeValue(new File(HISTORY_FILE), history);
+            synchronized (historyMap) {
+                objectMapper.writeValue(new File(HISTORY_FILE), historyMap);
             }
             System.out.println("Historial guardado en disco.");
         } catch (IOException e) {
@@ -67,21 +77,28 @@ public class ParkingHistoryService {
     @Scheduled(fixedRate = 60000) // Cada minuto
     public void captureSnapshot() {
         var stats = parkingService.getStatistics();
+        String currentId = realTimeParkingUpdater.getLastSnapshot()
+                .map(s -> s.carparkNumber())
+                .orElse("UNKNOWN");
+
         HistoryPoint point = new HistoryPoint(
                 LocalDateTime.now(),
                 stats.getFree(),
                 stats.getOccupied()
         );
         
-        synchronized (history) {
-            history.add(point);
-            // Ya no eliminamos puntos antiguos
+        synchronized (historyMap) {
+            historyMap.computeIfAbsent(currentId, k -> new ArrayList<>()).add(point);
         }
     }
 
     public List<HistoryPoint> getHistory() {
-        synchronized (history) {
-            return new ArrayList<>(history);
+        String currentId = realTimeParkingUpdater.getLastSnapshot()
+                .map(s -> s.carparkNumber())
+                .orElse("UNKNOWN");
+
+        synchronized (historyMap) {
+            return new ArrayList<>(historyMap.getOrDefault(currentId, Collections.emptyList()));
         }
     }
 
