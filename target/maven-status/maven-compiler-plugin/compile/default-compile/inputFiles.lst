@@ -1,8 +1,16 @@
 C:\Users\alerg\Desktop\DAP-SmartParkingLive-Observer\src\main\java\smartparking\config\ParkingProperties.java
 C:\Users\alerg\Desktop\DAP-SmartParkingLive-Observer\src\main\java\smartparking\controller\ParkingController.java
 C:\Users\alerg\Desktop\DAP-SmartParkingLive-Observer\src\main\java\smartparking\controller\PricingController.java
+C:\Users\alerg\Desktop\DAP-SmartParkingLive-Observer\src\main\java\smartparking\controller\UserViewController.java
 C:\Users\alerg\Desktop\DAP-SmartParkingLive-Observer\src\main\java\smartparking\integration\CarparkSnapshot.java
 C:\Users\alerg\Desktop\DAP-SmartParkingLive-Observer\src\main\java\smartparking\integration\SingaporeCarparkClient.java
+C:\Users\alerg\Desktop\DAP-SmartParkingLive-Observer\src\main\java\smartparking\kdd\controller\KddController.java
+C:\Users\alerg\Desktop\DAP-SmartParkingLive-Observer\src\main\java\smartparking\kdd\model\KddChatMessage.java
+C:\Users\alerg\Desktop\DAP-SmartParkingLive-Observer\src\main\java\smartparking\kdd\model\KddEvent.java
+C:\Users\alerg\Desktop\DAP-SmartParkingLive-Observer\src\main\java\smartparking\kdd\model\KddUser.java
+C:\Users\alerg\Desktop\DAP-SmartParkingLive-Observer\src\main\java\smartparking\kdd\model\Location.java
+C:\Users\alerg\Desktop\DAP-SmartParkingLive-Observer\src\main\java\smartparking\kdd\observer\KddObserver.java
+C:\Users\alerg\Desktop\DAP-SmartParkingLive-Observer\src\main\java\smartparking\kdd\service\KddService.java
 C:\Users\alerg\Desktop\DAP-SmartParkingLive-Observer\src\main\java\smartparking\model\ParkingEvent.java
 C:\Users\alerg\Desktop\DAP-SmartParkingLive-Observer\src\main\java\smartparking\model\ParkingLot.java
 C:\Users\alerg\Desktop\DAP-SmartParkingLive-Observer\src\main\java\smartparking\model\ParkingSpot.java

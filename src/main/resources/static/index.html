@@ -33,10 +33,16 @@
             </div>
             <nav class="sidebar-nav">
                 <ul>
-                    <li class="active"><a href="#"><i class="fa-solid fa-chart-pie"></i> Dashboard</a></li>
+                    <li class="active" data-target="dashboard-view"><a href="#"><i class="fa-solid fa-chart-pie"></i> Dashboard</a></li>
+                    <li data-target="kdd-view"><a href="#"><i class="fa-solid fa-users"></i> KDDs / Eventos</a></li>
                     <li><a href="#"><i class="fa-solid fa-car"></i> Plazas</a></li>
                     <li><a href="#"><i class="fa-solid fa-clock-rotate-left"></i> Historial</a></li>
                     <li><a href="#"><i class="fa-solid fa-gear"></i> Configuración</a></li>
+                </ul>
+                
+                <div style="padding: 15px 20px 5px; font-size: 0.75rem; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Usuarios Registrados</div>
+                <ul id="sidebar-user-list" style="list-style: none; padding: 0;">
+                    <!-- Users loaded via JS -->
                 </ul>
             </nav>
             <div class="sidebar-footer">
@@ -80,7 +86,7 @@
             </header>
 
             <!-- Dashboard Content -->
-            <div class="dashboard-content">
+            <div id="dashboard-view" class="view-section">
                 <!-- Statistics Cards -->
                 <section class="stats-grid">
                     <div class="stat-card total">
@@ -237,6 +243,64 @@
                                 </div>
                             </div>
                         </section>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KDD View -->
+            <div id="kdd-view" class="view-section" style="display: none;">
+                <div class="kdd-container" style="padding: 20px;">
+                    <div class="card" style="margin-bottom: 20px;">
+                        <div class="card-header">
+                            <h2><i class="fa-solid fa-user-plus"></i> Registro de Usuario KDD</h2>
+                        </div>
+                        <div class="card-body" style="display: flex; gap: 10px; align-items: center;">
+                            <input type="text" id="kdd-username" placeholder="Tu nombre" class="form-control" style="padding: 8px; border-radius: 6px; border: 1px solid #ccc;">
+                            <input type="number" id="kdd-lat" placeholder="Latitud" value="40.416" class="form-control" style="padding: 8px; border-radius: 6px; border: 1px solid #ccc; width: 100px;">
+                            <input type="number" id="kdd-lon" placeholder="Longitud" value="-3.703" class="form-control" style="padding: 8px; border-radius: 6px; border: 1px solid #ccc; width: 100px;">
+                            <label><input type="checkbox" id="kdd-ismod"> Es Mod?</label>
+                            <button onclick="registerKddUser()" class="btn-primary" style="padding: 8px 16px; background: #007AFF; color: white; border: none; border-radius: 6px; cursor: pointer;">Registrar</button>
+                        </div>
+                        <div id="kdd-user-status" style="padding: 10px; color: #666;">No registrado</div>
+                    </div>
+
+                    <div class="kdd-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <!-- Create Event -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h2><i class="fa-solid fa-plus-circle"></i> Crear Evento</h2>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-group" style="margin-bottom: 10px;">
+                                    <label>Nombre del Evento</label>
+                                    <input type="text" id="event-name" class="form-control" style="width: 100%; padding: 8px; margin-top: 5px;">
+                                </div>
+                                <div class="form-group" style="margin-bottom: 10px;">
+                                    <label>Descripción</label>
+                                    <textarea id="event-desc" class="form-control" style="width: 100%; padding: 8px; margin-top: 5px;"></textarea>
+                                </div>
+                                <div class="form-group" style="margin-bottom: 10px;">
+                                    <label>Ubicación (Lat/Lon)</label>
+                                    <div style="display: flex; gap: 10px;">
+                                        <input type="number" id="event-lat" placeholder="Lat" class="form-control" style="width: 50%; padding: 8px;">
+                                        <input type="number" id="event-lon" placeholder="Lon" class="form-control" style="width: 50%; padding: 8px;">
+                                    </div>
+                                </div>
+                                <button onclick="createKddEvent()" class="btn-primary" style="width: 100%; padding: 10px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer;">Publicar Evento</button>
+                            </div>
+                        </div>
+
+                        <!-- Event List -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h2><i class="fa-solid fa-map-location-dot"></i> Eventos Activos</h2>
+                            </div>
+                            <div class="card-body">
+                                <div id="kdd-events-list" style="max-height: 400px; overflow-y: auto;">
+                                    <!-- Events here -->
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

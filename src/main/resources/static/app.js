@@ -21,8 +21,10 @@ document.addEventListener('DOMContentLoaded', () => {
     connectWebSocket();
     loadHealth();
     loadEvents();
+    loadSidebarUsers();
     setInterval(loadHealth, 30000);
     setInterval(loadEvents, 20000);
+    setInterval(loadSidebarUsers, 30000); // Refresh user list periodically
     setInterval(loadHistory, 60000); // Actualizar historial cada minuto
 });
 
@@ -395,6 +397,12 @@ function connectWebSocket() {
             const update = JSON.parse(message.body);
             handleParkingUpdate(update);
         });
+
+        // KDD Notifications
+        if (currentKddUser) {
+            subscribeToKddNotifications();
+        }
+
     }, (error) => {
         console.error('Error de WebSocket:', error);
         updateConnectionStatus(false);
@@ -640,3 +648,194 @@ function showToast(title, message, type = 'info') {
         setTimeout(() => toast.remove(), 300);
     }, 5000);
 }
+
+// --- KDD Logic ---
+
+let currentKddUser = null;
+
+function registerKddUser() {
+    const name = document.getElementById('kdd-username').value;
+    const lat = document.getElementById('kdd-lat').value;
+    const lon = document.getElementById('kdd-lon').value;
+    const isMod = document.getElementById('kdd-ismod').checked;
+
+    if (!name) {
+        showToast('Error', 'El nombre es obligatorio', 'error');
+        return;
+    }
+
+    fetch('/api/kdd/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, lat, lon, isMod })
+    })
+    .then(res => res.json())
+    .then(user => {
+        currentKddUser = user;
+        document.getElementById('kdd-user-status').innerHTML = `Registrado como: <strong>${user.name}</strong> (ID: ${user.id.substring(0,8)}...)`;
+        showToast('KDD', 'Usuario registrado correctamente', 'success');
+        loadKddEvents();
+        loadSidebarUsers();
+        
+        // Subscribe to notifications if WS is connected
+        if (stompClient && stompClient.connected) {
+            subscribeToKddNotifications();
+        }
+    })
+    .catch(err => showToast('Error', 'Fallo al registrar usuario', 'error'));
+}
+
+function createKddEvent() {
+    if (!currentKddUser) {
+        showToast('Error', 'Debes registrarte primero', 'error');
+        return;
+    }
+
+    const name = document.getElementById('event-name').value;
+    const description = document.getElementById('event-desc').value;
+    const lat = document.getElementById('event-lat').value;
+    const lon = document.getElementById('event-lon').value;
+
+    if (!name || !lat || !lon) {
+        showToast('Error', 'Completa los campos obligatorios', 'error');
+        return;
+    }
+
+    fetch('/api/kdd/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            name, description, lat, lon,
+            creatorId: currentKddUser.id
+        })
+    })
+    .then(res => res.json())
+    .then(event => {
+        showToast('KDD', 'Evento creado exitosamente', 'success');
+        loadKddEvents();
+        // Clear form
+        document.getElementById('event-name').value = '';
+        document.getElementById('event-desc').value = '';
+    })
+    .catch(err => showToast('Error', 'Fallo al crear evento', 'error'));
+}
+
+function loadKddEvents() {
+    fetch('/api/kdd/events')
+        .then(res => res.json())
+        .then(events => {
+            const container = document.getElementById('kdd-events-list');
+            container.innerHTML = '';
+            events.forEach(event => {
+                const participantsCount = event.participants ? event.participants.length : 0;
+                const isJoined = currentKddUser && event.participants && event.participants.includes(currentKddUser.name);
+                
+                const div = document.createElement('div');
+                div.className = 'kdd-event-card';
+                div.style.cssText = 'padding: 10px; border-bottom: 1px solid #eee; margin-bottom: 5px;';
+                div.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                        <div>
+                            <h4 style="margin: 0 0 5px 0;">${event.name}</h4>
+                            <p style="margin: 0; color: #666; font-size: 0.9em;">${event.description || 'Sin descripción'}</p>
+                            <small style="color: #999;">
+                                Por: ${event.creatorName} | <i class="fa-solid fa-users"></i> ${participantsCount}
+                            </small>
+                        </div>
+                        ${currentKddUser && !isJoined ? 
+                            `<button onclick="joinEvent('${event.id}')" style="padding: 4px 8px; font-size: 0.8rem; background: #007AFF; color: white; border: none; border-radius: 4px; cursor: pointer;">Unirse</button>` 
+                            : (isJoined ? '<span style="font-size: 0.8rem; color: #10b981;"><i class="fa-solid fa-check"></i> Unido</span>' : '')}
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        });
+}
+
+function joinEvent(eventId) {
+    if (!currentKddUser) return;
+    
+    fetch(`/api/kdd/events/${eventId}/join`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: currentKddUser.id })
+    })
+    .then(res => {
+        if (res.ok) {
+            showToast('KDD', 'Te has unido al evento', 'success');
+            loadKddEvents();
+        } else {
+            showToast('Error', 'No se pudo unir al evento', 'error');
+        }
+    });
+}
+
+function subscribeToKddNotifications() {
+    // In a real app with auth, we would subscribe to /user/topic/kdd/notifications
+    // Here we subscribe to the public topic and filter by ID (client-side filtering for demo)
+    // BUT, the backend sends to /topic/kdd/notifications with targetUserId inside.
+    stompClient.subscribe('/topic/kdd/notifications', (message) => {
+        const notification = JSON.parse(message.body);
+        if (currentKddUser && notification.targetUserId === currentKddUser.id) {
+            showToast('Nueva KDD Cerca!', notification.message, 'info');
+            loadKddEvents();
+        }
+    });
+}
+
+// Navigation Logic
+document.querySelectorAll('.sidebar-nav li').forEach(li => {
+    li.addEventListener('click', (e) => {
+        e.preventDefault();
+        // Remove active class
+        document.querySelectorAll('.sidebar-nav li').forEach(l => l.classList.remove('active'));
+        li.classList.add('active');
+
+        // Hide all views
+        document.querySelectorAll('.view-section').forEach(v => v.style.display = 'none');
+        
+        // Show target view
+        const targetId = li.getAttribute('data-target');
+        if (targetId) {
+            const targetEl = document.getElementById(targetId);
+            if (targetEl) {
+                targetEl.style.display = ''; // Revert to CSS defined display (flex)
+            }
+        }
+    });
+});
+
+function loadSidebarUsers() {
+    fetch('/api/kdd/users')
+        .then(res => res.json())
+        .then(users => {
+            const container = document.getElementById('sidebar-user-list');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            users.forEach(user => {
+                const li = document.createElement('li');
+                li.style.padding = '8px 20px';
+                li.style.fontSize = '0.9rem';
+                
+                const a = document.createElement('a');
+                a.href = `/usuario/${user.name}`;
+                a.target = '_blank'; // Open in new tab or remove to navigate
+                a.style.color = 'rgba(255,255,255,0.7)';
+                a.style.textDecoration = 'none';
+                a.style.display = 'flex';
+                a.style.alignItems = 'center';
+                a.style.gap = '10px';
+                a.innerHTML = `<i class="fa-solid fa-user-circle"></i> ${user.name}`;
+                
+                // Hover effect
+                a.onmouseover = () => a.style.color = '#fff';
+                a.onmouseout = () => a.style.color = 'rgba(255,255,255,0.7)';
+
+                li.appendChild(a);
+                container.appendChild(li);
+            });
+        })
+        .catch(err => console.error('Error loading users:', err));
+}
+

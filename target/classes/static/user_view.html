@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vista de Usuario - SmartParking</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+    <style>
+        body {
+            background-color: #f0f2f5;
+            padding: 20px;
+            height: auto;
+            overflow-y: auto;
+        }
+        .user-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .profile-header {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            background: var(--primary-color);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: bold;
+        }
+        .profile-info h1 {
+            margin: 0;
+            font-size: 1.5rem;
+            color: var(--text-main);
+        }
+        .profile-info p {
+            margin: 5px 0 0;
+            color: var(--text-light);
+        }
+        .badge-mod {
+            background: #8b5cf6;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            margin-left: 10px;
+        }
+        .section-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--text-main);
+        }
+        .event-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 4px solid var(--primary-color);
+        }
+    </style>
+</head>
+<body>
+    <div class="user-container">
+        <div id="loading" style="text-align: center; padding: 50px;">
+            <i class="fa-solid fa-spinner fa-spin fa-2x"></i>
+            <p>Cargando perfil...</p>
+        </div>
+
+        <div id="profile-content" style="display: none;">
+            <div class="profile-header">
+                <div class="profile-avatar" id="avatar">U</div>
+                <div class="profile-info">
+                    <h1 id="user-name">Usuario</h1>
+                    <p><i class="fa-solid fa-location-dot"></i> <span id="user-location">0, 0</span> <span id="mod-badge" class="badge-mod" style="display: none;">MODERADOR</span></p>
+                    <p style="font-size: 0.9rem; margin-top: 5px;">ID: <span id="user-id" style="font-family: monospace;"></span></p>
+                </div>
+            </div>
+
+            <!-- Mod Tools Section -->
+            <div id="mod-tools" style="display: none; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px; border-left: 4px solid #8b5cf6;">
+                <h2 class="section-title" style="color: #8b5cf6;"><i class="fa-solid fa-wand-magic-sparkles"></i> Herramientas de Moderador</h2>
+                <div style="display: grid; gap: 15px;">
+                    <input type="text" id="new-event-name" placeholder="Nombre del evento" class="form-control" style="padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                    <textarea id="new-event-desc" placeholder="Descripción del evento" class="form-control" style="padding: 10px; border: 1px solid #ddd; border-radius: 6px; min-height: 80px;"></textarea>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="number" id="new-event-lat" placeholder="Latitud" class="form-control" style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                        <input type="number" id="new-event-lon" placeholder="Longitud" class="form-control" style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                    </div>
+                    <button onclick="createNewEvent()" style="background: #8b5cf6; color: white; border: none; padding: 12px; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                        <i class="fa-solid fa-plus"></i> Publicar Evento Oficial
+                    </button>
+                </div>
+            </div>
+
+            <h2 class="section-title"><i class="fa-solid fa-bell"></i> Notificaciones y Eventos Cercanos</h2>
+            <div id="events-list">
+                <!-- Events will be loaded here -->
+            </div>
+        </div>
+        
+        <div id="error-message" style="display: none; text-align: center; color: #ef4444; padding: 50px;">
+            <i class="fa-solid fa-circle-exclamation fa-2x"></i>
+            <p id="error-text">Usuario no encontrado</p>
+        </div>
+    </div>
+
+    <script>
+        let stompClient = null;
+        const subscriptions = {};
+
+        function connectWebSocket() {
+            const socket = new SockJS('/ws-parking');
+            stompClient = Stomp.over(socket);
+            stompClient.debug = null;
+            stompClient.connect({}, function (frame) {
+                console.log('Connected: ' + frame);
+            });
+        }
+        connectWebSocket();
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Get username from URL path: /usuario/{name}
+            // Since this is a static file served via forward, the browser URL is /usuario/Pepe
+            const pathParts = window.location.pathname.split('/');
+            const userName = pathParts[pathParts.length - 1]; // Last part is the name
+
+            if (!userName) {
+                showError('Nombre de usuario no especificado');
+                return;
+            }
+
+            loadUserProfile(userName);
+        });
+
+        async function loadUserProfile(name) {
+            try {
+                // First, we need to find the user by name. 
+                // Since the API doesn't have a search by name, we'll fetch all users and filter (for this demo).
+                // Ideally, we should have an endpoint /api/kdd/users/{name}
+                
+                // Let's assume we add an endpoint to get user details by name or we just list all users.
+                // For now, I'll fetch all users from the service (I need to add an endpoint for this or use existing logic).
+                // Wait, KddController doesn't expose "get all users".
+                // I will add an endpoint to KddController to get user by name.
+                
+                const response = await fetch(`/api/kdd/users/search?name=${encodeURIComponent(name)}`);
+                
+                if (!response.ok) {
+                    throw new Error('Usuario no encontrado');
+                }
+
+                const user = await response.json();
+                renderProfile(user);
+                loadEvents(user);
+
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+
+        function renderProfile(user) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('profile-content').style.display = 'block';
+            
+            document.getElementById('user-name').textContent = user.name;
+            document.getElementById('avatar').textContent = user.name.charAt(0).toUpperCase();
+            document.getElementById('user-location').textContent = `${user.location.lat.toFixed(4)}, ${user.location.lon.toFixed(4)}`;
+            document.getElementById('user-id').textContent = user.id;
+            
+            if (user.mod) {
+                document.getElementById('mod-badge').style.display = 'inline-block';
+                document.getElementById('mod-tools').style.display = 'block';
+                // Pre-fill location
+                document.getElementById('new-event-lat').value = user.location.lat;
+                document.getElementById('new-event-lon').value = user.location.lon;
+            }
+        }
+
+        async function createNewEvent() {
+            const name = document.getElementById('new-event-name').value;
+            const description = document.getElementById('new-event-desc').value;
+            const lat = document.getElementById('new-event-lat').value;
+            const lon = document.getElementById('new-event-lon').value;
+            const creatorId = document.getElementById('user-id').textContent;
+
+            if (!name || !lat || !lon) {
+                alert('Por favor completa los campos obligatorios');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/kdd/events', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name, description, lat, lon, creatorId
+                    })
+                });
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.error || 'Error al crear evento');
+                }
+
+                alert('Evento creado exitosamente');
+                // Clear form
+                document.getElementById('new-event-name').value = '';
+                document.getElementById('new-event-desc').value = '';
+                
+                // Reload events
+                // We need to pass the user object again, but we don't have it stored globally.
+                // Let's just reload the page or fetch user again. Reloading is easier for now.
+                location.reload();
+
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        async function loadEvents(user) {
+            const response = await fetch('/api/kdd/events');
+            const events = await response.json();
+            
+            const container = document.getElementById('events-list');
+            container.innerHTML = '';
+
+            if (events.length === 0) {
+                container.innerHTML = '<p style="color: #666;">No hay eventos activos.</p>';
+                return;
+            }
+
+            events.forEach(event => {
+                // Calculate distance
+                const dist = calculateDistance(user.location.lat, user.location.lon, event.location.lat, event.location.lon);
+                const isNear = dist <= 10; // 10km
+                const participantsCount = event.participants ? event.participants.length : 0;
+                const isJoined = event.participants && event.participants.includes(user.name);
+
+                const div = document.createElement('div');
+                div.className = 'event-card';
+                
+                // Chat HTML generation
+                let chatHtml = '';
+                if (isJoined) {
+                    // Subscribe to chat if connected
+                    if (stompClient && stompClient.connected && !subscriptions[event.id]) {
+                        subscriptions[event.id] = stompClient.subscribe(`/topic/kdd/events/${event.id}/messages`, function (messageOutput) {
+                            const message = JSON.parse(messageOutput.body);
+                            appendMessage(event.id, message);
+                        });
+                    } else if (!subscriptions[event.id]) {
+                        // Retry subscription if not connected yet
+                        setTimeout(() => {
+                             if (stompClient && stompClient.connected && !subscriptions[event.id]) {
+                                subscriptions[event.id] = stompClient.subscribe(`/topic/kdd/events/${event.id}/messages`, function (messageOutput) {
+                                    const message = JSON.parse(messageOutput.body);
+                                    appendMessage(event.id, message);
+                                });
+                             }
+                        }, 1000);
+                    }
+
+                    const messages = event.chatMessages || [];
+                    const messagesHtml = messages.map(m => 
+                        `<div style="margin-bottom: 5px; font-size: 0.9rem;">
+                            <strong>${m.senderName}:</strong> ${m.content}
+                         </div>`
+                    ).join('');
+                    
+                    chatHtml = `
+                        <div style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 10px;">
+                            <h4 style="margin: 0 0 10px 0; font-size: 1rem;"><i class="fa-solid fa-comments"></i> Chat del Evento</h4>
+                            <div id="chat-box-${event.id}" style="max-height: 150px; overflow-y: auto; background: #f9f9f9; padding: 10px; border-radius: 6px; margin-bottom: 10px;">
+                                ${messagesHtml || '<span id="no-msg-' + event.id + '" style="color: #999; font-style: italic;">No hay mensajes aún.</span>'}
+                            </div>
+                            <div style="display: flex; gap: 5px;">
+                                <input type="text" id="chat-input-${event.id}" placeholder="Escribe un mensaje..." style="flex: 1; padding: 6px; border: 1px solid #ddd; border-radius: 4px;">
+                                <button onclick="sendMessage('${event.id}')" style="padding: 6px 12px; background: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer;">Enviar</button>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                div.innerHTML = `
+                    <div style="display: flex; justify-content: space-between;">
+                        <h3 style="margin: 0;">${event.name}</h3>
+                        ${isNear ? '<span style="color: #10b981; font-weight: bold; font-size: 0.8rem;">CERCA DE TI</span>' : ''}
+                    </div>
+                    <p style="margin: 5px 0; color: #555;">${event.description || 'Sin descripción'}</p>
+                    <div style="font-size: 0.85rem; color: #888; margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <span style="margin-right: 10px;"><i class="fa-solid fa-user"></i> ${event.creatorName}</span>
+                            <span style="margin-right: 10px;"><i class="fa-solid fa-ruler"></i> ${dist.toFixed(1)} km</span>
+                            <span><i class="fa-solid fa-users"></i> ${participantsCount}</span>
+                        </div>
+                        ${!isJoined ? 
+                            `<button onclick="joinEvent('${event.id}')" style="padding: 6px 12px; background: #007AFF; color: white; border: none; border-radius: 4px; cursor: pointer;">Unirse</button>` 
+                            : '<span style="color: #10b981; font-weight: bold;"><i class="fa-solid fa-check"></i> Unido</span>'}
+                    </div>
+                    ${chatHtml}
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        async function sendMessage(eventId) {
+            const userId = document.getElementById('user-id').textContent;
+            const input = document.getElementById(`chat-input-${eventId}`);
+            const content = input.value;
+            
+            if (!content) return;
+
+            try {
+                const response = await fetch(`/api/kdd/events/${eventId}/messages`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId, content })
+                });
+
+                if (response.ok) {
+                    input.value = '';
+                    // No reload needed, WebSocket will handle update
+                } else {
+                    const err = await response.json();
+                    alert(err.error || 'Error al enviar mensaje');
+                }
+            } catch (e) {
+                alert('Error de conexión');
+            }
+        }
+
+        function appendMessage(eventId, message) {
+            const chatBox = document.getElementById(`chat-box-${eventId}`);
+            if (!chatBox) return;
+
+            const noMsg = document.getElementById(`no-msg-${eventId}`);
+            if (noMsg) noMsg.remove();
+
+            const div = document.createElement('div');
+            div.style.marginBottom = '5px';
+            div.style.fontSize = '0.9rem';
+            div.innerHTML = `<strong>${message.senderName}:</strong> ${message.content}`;
+            
+            chatBox.appendChild(div);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        async function joinEvent(eventId) {
+            const userId = document.getElementById('user-id').textContent;
+            try {
+                const response = await fetch(`/api/kdd/events/${eventId}/join`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId })
+                });
+
+                if (response.ok) {
+                    alert('Te has unido al evento!');
+                    // Reload events to update UI
+                    const userName = document.getElementById('user-name').textContent;
+                    // We need to fetch user again to get location for distance calc, or store it.
+                    // For simplicity, just reload page
+                    location.reload();
+                } else {
+                    alert('Error al unirse al evento');
+                }
+            } catch (e) {
+                alert('Error de conexión');
+            }
+        }
+
+        function showError(msg) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('error-message').style.display = 'block';
+            document.getElementById('error-text').textContent = msg;
+        }
+
+        // Haversine formula
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                    Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+    </script>
+</body>
+</html>

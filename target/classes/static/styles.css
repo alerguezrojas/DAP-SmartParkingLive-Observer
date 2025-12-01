@@ -347,14 +347,15 @@ body {
     color: var(--primary-color);
 }
 
-/* Dashboard Content */
-.dashboard-content {
+/* View Section (Dashboard, KDD, etc) */
+.view-section {
     flex: 1;
     padding: var(--spacing-lg);
     overflow-y: auto;
     display: flex;
     flex-direction: column;
     gap: var(--spacing-lg);
+    min-height: 0; /* Crucial for nested flex scrolling */
 }
 
 /* Stats Grid */
