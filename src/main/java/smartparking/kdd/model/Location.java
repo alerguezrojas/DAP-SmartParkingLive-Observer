@@ -1,11 +1,24 @@
 package smartparking.kdd.model;
 
-public record Location(double lat, double lon) {
+import jakarta.persistence.Embeddable;
+
+@Embeddable
+public class Location {
+    private double lat;
+    private double lon;
+
+    public Location() {} // Constructor vacio requerido por JPA
+
+    public Location(double lat, double lon) {
+        this.lat = lat;
+        this.lon = lon;
+    }
+
+    public double getLat() { return lat; }
+    public double getLon() { return lon; }
+
     public double distanceTo(Location other) {
-        // Haversine formula approximation or simple euclidean for small distances
-        // Using simple euclidean for simplicity as per original Kdd logic if it was simple, 
-        // but let's do a proper Haversine since it was "RANGO_KM_SUSCRIPCION"
-        double R = 6371; // Radius of the earth in km
+        double R = 6371; 
         double dLat = Math.toRadians(other.lat - lat);
         double dLon = Math.toRadians(other.lon - lon);
         double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
