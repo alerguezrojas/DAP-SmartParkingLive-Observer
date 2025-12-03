@@ -266,6 +266,93 @@
             }
         }
 
+        async function loadEvents(user) {
+            const response = await fetch(`/api/kdd/events?userId=${user.id}`);
+            const events = await response.json();
+
+            const myEventsContainer = document.getElementById('my-events-list');
+            const eventsContainer = document.getElementById('events-list');
+
+            myEventsContainer.innerHTML = '';
+            eventsContainer.innerHTML = '';
+
+            let hasMyEvents = false;
+            let hasOtherEvents = false;
+
+            events.forEach(event => {
+                const isJoined = event.participants && event.participants.includes(user.name);
+                const container = isJoined ? myEventsContainer : eventsContainer;
+
+                if (isJoined) hasMyEvents = true;
+                else hasOtherEvents = true;
+
+                const div = document.createElement('div');
+                div.className = 'event-card';
+
+                let actionButton = '';
+                let chatSection = '';
+
+                if (isJoined) {
+                    // Chat section for joined events
+                    chatSection = `
+                        <div style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 10px;">
+                            <h4 style="margin: 0 0 10px 0; font-size: 0.9rem;">Chat del Evento</h4>
+                            <div id="chat-box-${event.id}" style="height: 150px; overflow-y: auto; border: 1px solid #eee; padding: 10px; border-radius: 4px; background: #f9f9f9; margin-bottom: 10px; font-size: 0.9rem;">
+                                <!-- Messages -->
+                            </div>
+                            <div style="display: flex; gap: 5px;">
+                                <input type="text" id="chat-input-${event.id}" placeholder="Escribe un mensaje..." 
+                                    style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                <button onclick="sendMessage('${event.id}')" 
+                                    style="background: var(--primary-color); color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer;">
+                                    <i class="fa-solid fa-paper-plane"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+
+                    // Subscribe to chat
+                    subscribeToChat(event.id);
+                    // Render existing messages
+                    setTimeout(() => renderMessages(event.id, event.chatMessages), 100);
+                } else {
+                    actionButton = `
+                        <button onclick="joinEvent('${event.id}')" 
+                            style="background: var(--primary-color); color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; margin-top: 10px;">
+                            Unirse al Evento
+                        </button>
+                    `;
+                }
+
+                div.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                        <div>
+                            <h3 style="margin: 0 0 5px 0;">${event.name}</h3>
+                            <p style="margin: 0; color: #666; font-size: 0.9rem;">${event.description}</p>
+                            <p style="margin: 5px 0 0; font-size: 0.8rem; color: #888;">
+                                <i class="fa-solid fa-user"></i> Creado por: ${event.creatorName}
+                            </p>
+                        </div>
+                        <span style="background: #e0e7ff; color: var(--primary-color); padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;">
+                            <i class="fa-solid fa-users"></i> ${event.participants ? event.participants.length : 0}
+                        </span>
+                    </div>
+                    ${actionButton}
+                    ${chatSection}
+                `;
+
+                container.appendChild(div);
+            });
+
+            if (!hasMyEvents) {
+                myEventsContainer.innerHTML = '<p style="color: #666; font-style: italic;">No te has unido a ningún evento.</p>';
+            }
+
+            if (!hasOtherEvents) {
+                eventsContainer.innerHTML = '<p style="color: #666; font-style: italic;">No hay otros eventos activos cerca.</p>';
+            }
+        }
+
         async function createNewEvent() {
             const name = document.getElementById('new-event-name').value;
             const description = document.getElementById('new-event-desc').value;
@@ -327,63 +414,6 @@
 
             } catch (error) {
                 alert(error.message);
-            }
-        }
-
-        async function loadEvents(user) {
-            const response = await fetch(`/api/kdd/events?userId=${user.id}`);
-            const events = await response.json();
-
-            const container = document.getElementById('events-list');
-            container.innerHTML = '';
-
-            if (events.length === 0) {
-                container.innerHTML = '<p style="color: #666;">No hay eventos activos.</p>';
-                return;
-            }
-
-            events.forEach(event => {
-                const dist = calculateDistance(user.location.lat, user.location.lon, event.location.lat, event.location.lon);
-                const isNear = dist <= 10;
-                const participantsCount = event.participants ? event.participants.length : 0;
-                const isJoined = event.participants && event.participants.includes(user.name);
-
-                const div = document.createElement('div');
-                div.className = 'event-card';
-
-                let chatHtml = '';
-                if (isJoined) {
-                    // WebSocket subscription logic...
-                }
-
-                div.innerHTML = `
-                    <div style="display: flex; justify-content: space-between;">
-                        <h3 style="margin: 0;">${event.name}</h3>
-                        ${isNear ? '<span style="color: #10b981; font-weight: bold; font-size: 0.8rem;">CERCA DE TI</span>' : ''}
-                    </div>
-                    <p style="margin: 5px 0; color: #555;">${event.description || 'Sin descripción'}</p>
-                    <div style="font-size: 0.85rem; color: #888; margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <span style="margin-right: 10px;"><i class="fa-solid fa-user"></i> ${event.creatorName}</span>
-                            <span style="margin-right: 10px;"><i class="fa-solid fa-ruler"></i> ${dist.toFixed(1)} km</span>
-                            <span><i class="fa-solid fa-users"></i> ${participantsCount}</span>
-                        </div>
-                        ${!isJoined ?
-                        `<button onclick="joinEvent('${event.id}')" style="padding: 6px 12px; background: #007AFF; color: white; border: none; border-radius: 4px; cursor: pointer;">Unirse</button>`
-                        : '<span style="color: #10b981; font-weight: bold;"><i class="fa-solid fa-check"></i> Unido</span>'}
-                    </div>
-                    ${chatHtml}
-                `;
-                container.appendChild(div);
-            });
-        }
-
-        function toggleEventDetails(eventId) {
-            const details = document.getElementById(`details-${eventId}`);
-            if (details.style.display === 'none') {
-                details.style.display = 'block';
-            } else {
-                details.style.display = 'none';
             }
         }
 
