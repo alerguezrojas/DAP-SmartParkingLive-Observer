@@ -61,6 +61,15 @@ public class KddService {
     }
 
     @Transactional
+    public KddUser updateUserLocation(String userId, double lat, double lon) {
+        KddUser user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado con ID: " + userId));
+        
+        user.setLocation(new Location(lat, lon));
+        return userRepository.save(user);
+    }
+
+    @Transactional
     public KddEvent joinEvent(String eventId, String userId) {
         KddEvent event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new IllegalArgumentException("Evento no encontrado"));

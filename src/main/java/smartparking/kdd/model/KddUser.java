@@ -47,4 +47,8 @@ public class KddUser implements KddObserver {
     public String getName() { return name; }
     public Location getLocation() { return location; }
     public boolean isMod() { return isMod; }
+
+    public void setLocation(Location location) {
+        this.location = location;
+    }
 }

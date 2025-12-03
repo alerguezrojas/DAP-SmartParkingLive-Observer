@@ -83,6 +83,20 @@ public class KddController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @PostMapping("/users/{userId}/location")
+    public ResponseEntity<?> updateUserLocation(@PathVariable String userId, @RequestBody Map<String, Double> body) {
+        try {
+            double lat = body.get("lat");
+            double lon = body.get("lon");
+            KddUser updatedUser = kddService.updateUserLocation(userId, lat, lon);
+            return ResponseEntity.ok(updatedUser);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of("error", "Error interno al actualizar ubicación."));
+        }
+    }
+
     @PostMapping("/events/{eventId}/join")
     public ResponseEntity<?> joinEvent(@PathVariable String eventId, @RequestBody Map<String, String> body) {
         try {
