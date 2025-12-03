@@ -25,7 +25,7 @@ public class KddService {
         if (existing.isPresent()) {
             // Actualizamos ubicación si ya existe
             // Nota: KddUser debería tener setters o crear uno nuevo manteniendo el ID
-            return existing.get(); 
+            return existing.get();
         }
 
         KddUser user = new KddUser(null, name, new Location(lat, lon), isMod);
@@ -44,12 +44,27 @@ public class KddService {
         KddEvent event = new KddEvent(name, description, new Location(lat, lon), creator.getName());
         event = eventRepository.save(event);
 
-        notifyObservers(event);
+        // El creador (Mod) notifica a sus suscriptores
+        creator.notifySubscribers(event);
         return event;
     }
 
     public List<KddEvent> getAllEvents() {
         return eventRepository.findAll();
+    }
+
+    public List<KddEvent> getEventsForUser(String userId) {
+        KddUser user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+
+        List<String> subscribedModNames = user.getSubscriptions().stream()
+                .map(KddUser::getName)
+                .toList();
+
+        return eventRepository.findAll().stream()
+                .filter(event -> subscribedModNames.contains(event.getCreatorName())
+                        || event.getParticipants().contains(user.getName()))
+                .toList();
     }
 
     public List<KddUser> getAllUsers() {
@@ -64,16 +79,44 @@ public class KddService {
     public KddUser updateUserLocation(String userId, double lat, double lon) {
         KddUser user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado con ID: " + userId));
-        
+
         user.setLocation(new Location(lat, lon));
-        return userRepository.save(user);
+        user = userRepository.save(user);
+
+        // Actualizar suscripciones basadas en la nueva ubicación
+        updateSubscriptions(user);
+
+        return user;
+    }
+
+    private void updateSubscriptions(KddUser user) {
+        // Si el usuario es un Mod, no necesita suscribirse a otros (según requerimiento
+        // actual,
+        // aunque podría ser debatible. Asumimos que solo usuarios normales se
+        // suscriben).
+        if (user.isMod()) {
+            return;
+        }
+
+        List<KddUser> allUsers = userRepository.findAll();
+        for (KddUser potentialMod : allUsers) {
+            if (potentialMod.isMod()) {
+                double distance = user.getLocation().distanceTo(potentialMod.getLocation());
+                if (distance <= 10.0) {
+                    potentialMod.addSubscriber(user);
+                } else {
+                    potentialMod.removeSubscriber(user);
+                }
+                userRepository.save(potentialMod); // Guardamos el Mod con la lista actualizada
+            }
+        }
     }
 
     @Transactional
     public KddEvent joinEvent(String eventId, String userId) {
         KddEvent event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new IllegalArgumentException("Evento no encontrado"));
-        
+
         KddUser user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
 
@@ -91,22 +134,17 @@ public class KddService {
 
         // Validar si el usuario es participante (opcional)
         if (!event.getParticipants().contains(user.getName())) {
-             throw new SecurityException("Debes unirte al evento para comentar");
+            throw new SecurityException("Debes unirte al evento para comentar");
         }
 
         KddChatMessage message = new KddChatMessage(user.getName(), content);
         event.addMessage(message);
-        
+
         eventRepository.save(event); // Al guardar el evento, se guardan los mensajes gracias a @ElementCollection
         return message;
     }
 
-    private void notifyObservers(KddEvent event) {
-        // Recuperamos todos los usuarios para notificarles
-        // Nota: En un sistema real con miles de usuarios, esto se haría con una query geoespacial en BD
-        List<KddUser> users = userRepository.findAll();
-        for (KddUser user : users) {
-            user.onNewEvent(event);
-        }
-    }
+    // private void notifyObservers(KddEvent event) {
+    // // Método deprecado/eliminado en favor de notifySubscribers en KddUser
+    // }
 }

@@ -36,10 +36,9 @@ public class KddController {
         // When this user is notified, we push a message to WebSocket
         user.setNotificationCallback(event -> {
             Map<String, Object> notification = Map.of(
-                "targetUserId", user.getId(),
-                "message", "Nuevo evento cerca: " + event.getName(),
-                "event", event
-            );
+                    "targetUserId", user.getId(),
+                    "message", "Nuevo evento cerca: " + event.getName(),
+                    "event", event);
             messagingTemplate.convertAndSend("/topic/kdd/notifications", notification);
         });
 
@@ -47,7 +46,10 @@ public class KddController {
     }
 
     @GetMapping("/events")
-    public List<KddEvent> getEvents() {
+    public List<KddEvent> getEvents(@RequestParam(required = false) String userId) {
+        if (userId != null) {
+            return kddService.getEventsForUser(userId);
+        }
         return kddService.getAllEvents();
     }
 
@@ -125,11 +127,10 @@ public class KddController {
 
             // Broadcast to WebSocket
             Map<String, Object> wsMessage = Map.of(
-                "eventId", eventId,
-                "senderName", message.getSenderName(),
-                "content", message.getContent(),
-                "timestamp", message.getTimestamp().toString()
-            );
+                    "eventId", eventId,
+                    "senderName", message.getSenderName(),
+                    "content", message.getContent(),
+                    "timestamp", message.getTimestamp().toString());
             messagingTemplate.convertAndSend("/topic/kdd/events/" + eventId + "/messages", wsMessage);
 
             return ResponseEntity.ok(message);

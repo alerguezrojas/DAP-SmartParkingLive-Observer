@@ -9,28 +9,29 @@ import java.util.UUID;
 @Entity
 @Table(name = "kdd_events")
 public class KddEvent {
-    
+
     @Id
     private String id;
     private String name;
     private String description;
-    
+
     @Embedded
     private Location location;
-    
+
     private String creatorName;
     private LocalDateTime createdAt;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "kdd_event_participants", joinColumns = @JoinColumn(name = "event_id"))
     @Column(name = "participant_name")
     private List<String> participants;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "kdd_event_messages", joinColumns = @JoinColumn(name = "event_id"))
     private List<KddChatMessage> chatMessages;
 
-    public KddEvent() {}
+    public KddEvent() {
+    }
 
     public KddEvent(String name, String description, Location location, String creatorName) {
         this.id = UUID.randomUUID().toString();
@@ -53,12 +54,35 @@ public class KddEvent {
         this.chatMessages.add(message);
     }
 
-    public String getId() { return id; }
-    public String getName() { return name; }
-    public String getDescription() { return description; }
-    public Location getLocation() { return location; }
-    public String getCreatorName() { return creatorName; }
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public List<String> getParticipants() { return participants; }
-    public List<KddChatMessage> getChatMessages() { return chatMessages; }
+    public String getId() {
+        return id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public Location getLocation() {
+        return location;
+    }
+
+    public String getCreatorName() {
+        return creatorName;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public List<String> getParticipants() {
+        return participants;
+    }
+
+    public List<KddChatMessage> getChatMessages() {
+        return chatMessages;
+    }
 }
