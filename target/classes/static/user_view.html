@@ -379,12 +379,15 @@
                     throw new Error(err.error || 'Error al crear evento');
                 }
 
-                alert('Evento creado exitosamente');
+                const newEvent = await response.json();
+                await joinEvent(newEvent.id); // Automatically join the creator to the new event
+
                 location.reload();
 
             } catch (error) {
                 alert(error.message);
             }
+
         }
 
         async function updateUserLocation() {
@@ -409,7 +412,6 @@
                     throw new Error(err.error || 'Error al actualizar la ubicación');
                 }
 
-                alert('Ubicación actualizada correctamente.');
                 location.reload();
 
             } catch (error) {
@@ -475,7 +477,6 @@
                 });
 
                 if (response.ok) {
-                    alert('Te has unido al evento!');
                     location.reload();
                 } else {
                     alert('Error al unirse al evento');
