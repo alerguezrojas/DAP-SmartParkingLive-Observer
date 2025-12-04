@@ -220,7 +220,6 @@ function selectParking(id) {
     fetch(`${API_URL}/select/${id}`, { method: 'POST' })
         .then(response => {
             if (response.ok) {
-                showToast(`Parking ${id} seleccionado`, 'success');
                 // Reload everything
                 loadParkingData();
                 loadHistory(); 
@@ -331,10 +330,10 @@ function updateSpotInGrid(spotId, newStatus) {
         spotElement.querySelector('.spot-status').textContent = statusText[newStatus];
         spotElement.querySelector('.spot-icon').innerHTML = icons[newStatus];
 
-        // Show toast
-        const toastType = newStatus === 'FREE' ? 'success' : (newStatus === 'OCCUPIED' ? 'warning' : 'error');
-        const toastMsg = newStatus === 'FREE' ? 'ahora está libre' : (newStatus === 'OCCUPIED' ? 'ha sido ocupada' : 'está en mantenimiento');
-        showToast(`Plaza ${spotId}`, `La plaza ${spotId} ${toastMsg}`, toastType);
+        // Show toast - DESACTIVADO para evitar spam al cambiar de parking
+        // const toastType = newStatus === 'FREE' ? 'success' : (newStatus === 'OCCUPIED' ? 'warning' : 'error');
+        // const toastMsg = newStatus === 'FREE' ? 'ahora está libre' : (newStatus === 'OCCUPIED' ? 'ha sido ocupada' : 'está en mantenimiento');
+        // showToast(`Plaza ${spotId}`, `La plaza ${spotId} ${toastMsg}`, toastType);
 
         spotElement.style.animation = 'none';
         setTimeout(() => {
