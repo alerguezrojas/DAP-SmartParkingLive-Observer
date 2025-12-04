@@ -1,0 +1,249 @@
+@startuml
+
+' Configuración de estilo
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam linetype ortho
+
+title Diagrama de Clases - Grid Finders (SmartParking Live Observer)
+
+' --- PAQUETE CORE / MODEL ---
+package "smartparking.model" {
+    enum SpotStatus {
+        FREE
+        OCCUPIED
+        OUT_OF_SERVICE
+    }
+
+    class ParkingSpot {
+        - id: int
+        - status: SpotStatus
+        - observers: List<ParkingObserver>
+        + attach(observer: ParkingObserver)
+        + detach(observer: ParkingObserver)
+        + setStatus(newStatus: SpotStatus)
+        - notifyObservers()
+    }
+
+    class ParkingLot {
+        - name: String
+        - spots: List<ParkingSpot>
+        - registeredObservers: List<ParkingObserver>
+        + findSpotById(id: int): Optional<ParkingSpot>
+        + changeSpotStatus(id: int, newStatus: SpotStatus)
+        + attachObserverToAllSpots(observer: ParkingObserver)
+        + resizeTo(desiredSpots: int)
+    }
+
+    class Carpark {
+        - carparkNumber: String
+        - address: String
+        - xCoord: String
+        - yCoord: String
+        - carparkType: String
+        ...
+    }
+
+    class ParkingHistoryEntity {
+        - id: Long
+        - carparkId: String
+        - timestamp: LocalDateTime
+        - free: int
+        - occupied: int
+    }
+
+    record ParkingEvent {
+        spotId: int
+        status: SpotStatus
+        occurredAt: Instant
+        source: String
+        message: String
+    }
+}
+
+' --- PAQUETE OBSERVER (CORE) ---
+package "smartparking.observer" {
+    interface ParkingObserver {
+        + update(spot: ParkingSpot)
+    }
+}
+
+package "smartparking.observers" {
+    class ActivityLogObserver implements ParkingObserver {
+        - activityLog: ParkingActivityLog
+        + update(spot: ParkingSpot)
+    }
+    class MobileNotifierObserver implements ParkingObserver {
+        - interestedSpotId: int
+        + update(spot: ParkingSpot)
+    }
+    class SecurityModuleObserver implements ParkingObserver {
+        + update(spot: ParkingSpot)
+    }
+    class StatisticsModuleObserver implements ParkingObserver {
+        - parkingLot: ParkingLot
+        + update(spot: ParkingSpot)
+    }
+    class WebDashboardObserver implements ParkingObserver {
+        - parkingLot: ParkingLot
+        + update(spot: ParkingSpot)
+    }
+    class WebSocketObserver implements ParkingObserver {
+        - messagingTemplate: SimpMessagingTemplate
+        + update(spot: ParkingSpot)
+    }
+}
+
+' --- PAQUETE SERVICE ---
+package "smartparking.service" {
+    class ParkingService {
+        - parkingLot: ParkingLot
+        - properties: ParkingProperties
+        + getStatistics(): ParkingStatistics
+        + applyExternalSnapshot(snapshot: CarparkSnapshot)
+        + markOutOfService()
+    }
+
+    class RealTimeParkingUpdater {
+        - client: SingaporeCarparkClient
+        - parkingService: ParkingService
+        - carparkRepository: CarparkRepository
+        - lastSnapshot: CarparkSnapshot
+        + bootstrap()
+        + refreshFromFeed()
+        - updateHistory(snapshots: List<CarparkSnapshot>)
+    }
+
+    class ParkingActivityLog {
+        - events: Deque<ParkingEvent>
+        + recordSpotChange(...)
+        + getRecent(limit: int): List<ParkingEvent>
+    }
+
+    class MonitoringService {
+        + getHealthSnapshot(): HealthSnapshot
+    }
+
+    class PricingService {
+        - pricingStrategy: PricingStrategy
+        - parkingService: ParkingService
+        + calculateQuote(minutes: int, ...): PricingQuote
+    }
+}
+
+' --- PAQUETE PRICING ---
+package "smartparking.pricing" {
+    interface PricingStrategy {
+        + calculate(request: PricingRequest): PricingQuote
+    }
+
+    class DynamicPricingStrategy implements PricingStrategy {
+        - baseRatePerHour: double
+        - peakMultiplier: double
+        + calculate(request: PricingRequest): PricingQuote
+    }
+
+    record PricingRequest
+    record PricingQuote
+}
+
+' --- PAQUETE INTEGRATION ---
+package "smartparking.integration" {
+    class SingaporeCarparkClient {
+        - restClient: RestClient
+        + fetchMetadata(): List<CarparkMetadata>
+        + fetchAll(): List<CarparkSnapshot>
+    }
+    record CarparkSnapshot
+    record CarparkMetadata
+}
+
+' --- PAQUETE KDD (SUBPROYECTO) ---
+package "smartparking.kdd" {
+    package "model" as kdd_model {
+        class Location <<Embeddable>> {
+            - lat: double
+            - lon: double
+            + distanceTo(other: Location): double
+        }
+
+        interface KddObserver {
+            + onNewEvent(event: KddEvent)
+        }
+
+        class KddUser implements KddObserver {
+            - id: String
+            - name: String
+            - location: Location
+            - isMod: boolean
+            - subscribers: List<KddUser>
+            - subscriptions: List<KddUser>
+            - notificationCallback: Consumer<KddEvent>
+            + notifySubscribers(event: KddEvent)
+            + onNewEvent(event: KddEvent)
+        }
+
+        class KddEvent {
+            - id: String
+            - name: String
+            - location: Location
+            - creatorName: String
+            - participants: List<String>
+            - chatMessages: List<KddChatMessage>
+        }
+
+        class KddChatMessage <<Embeddable>>
+    }
+
+    package "service" as kdd_service {
+        class KddService {
+            - userRepository: KddUserRepository
+            - eventRepository: KddEventRepository
+            + registerUser(...)
+            + createEvent(...)
+            + updateUserLocation(...)
+            - updateSubscriptions(user: KddUser)
+        }
+    }
+
+    package "controller" as kdd_controller {
+        class KddController {
+            - kddService: KddService
+            - messagingTemplate: SimpMessagingTemplate
+        }
+    }
+}
+
+' --- RELACIONES PRINCIPALES ---
+
+' Parking Core
+ParkingSpot "1" o-- "*" ParkingObserver : notifies >
+ParkingLot "1" *-- "*" ParkingSpot : contains >
+ParkingSpot ..> SpotStatus
+
+' Services & Dependencies
+ParkingService --> ParkingLot
+RealTimeParkingUpdater --> SingaporeCarparkClient
+RealTimeParkingUpdater --> ParkingService
+RealTimeParkingUpdater --> "smartparking.repository"
+PricingService --> PricingStrategy
+PricingService --> ParkingService
+
+' Observers dependencies
+ActivityLogObserver --> ParkingActivityLog
+StatisticsModuleObserver --> ParkingLot
+WebDashboardObserver --> ParkingLot
+
+' Pricing
+DynamicPricingStrategy ..> PricingRequest
+DynamicPricingStrategy ..> PricingQuote
+
+' KDD Module
+KddUser "1" *-- "1" Location
+KddEvent "1" *-- "1" Location
+KddUser "1" --> "*" KddUser : subscribers >
+KddService --> "smartparking.kdd.service" : uses repositories
+KddController --> KddService
+KddEvent "1" *-- "*" KddChatMessage
+
+@enduml

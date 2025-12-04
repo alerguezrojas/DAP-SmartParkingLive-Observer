@@ -1,0 +1,77 @@
+@startuml
+' Configuración de estilo
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam linetype ortho
+
+title Grid Finders - Módulo KDD (Eventos Sociales)
+
+package "smartparking.kdd" {
+    package "model" as kdd_model {
+        class Location <<Embeddable>> {
+            - lat: double
+            - lon: double
+            + distanceTo(other: Location): double
+        }
+
+        interface KddObserver {
+            + onNewEvent(event: KddEvent)
+        }
+
+        class KddUser implements KddObserver {
+            - id: String
+            - name: String
+            - location: Location
+            - isMod: boolean
+            - subscribers: List<KddUser>
+            - subscriptions: List<KddUser>
+            - notificationCallback: Consumer<KddEvent>
+            + notifySubscribers(event: KddEvent)
+            + onNewEvent(event: KddEvent)
+        }
+
+        class KddEvent {
+            - id: String
+            - name: String
+            - location: Location
+            - creatorName: String
+            - participants: List<String>
+            - chatMessages: List<KddChatMessage>
+        }
+
+        class KddChatMessage <<Embeddable>> {
+            - senderName: String
+            - content: String
+            - timestamp: LocalDateTime
+        }
+    }
+
+    package "service" as kdd_service {
+        class KddService {
+            - userRepository: KddUserRepository
+            - eventRepository: KddEventRepository
+            + registerUser(...)
+            + createEvent(...)
+            + updateUserLocation(...)
+            - updateSubscriptions(user: KddUser)
+        }
+    }
+
+    package "controller" as kdd_controller {
+        class KddController {
+            - kddService: KddService
+            - messagingTemplate: SimpMessagingTemplate
+        }
+    }
+}
+
+' --- RELACIONES ---
+KddUser "1" *-- "1" Location
+KddEvent "1" *-- "1" Location
+KddUser "1" --> "*" KddUser : suscriptores >
+KddService --> KddUser : gestiona >
+KddService --> KddEvent : gestiona >
+KddController --> KddService : usa >
+KddEvent "1" *-- "*" KddChatMessage : contiene >
+
+@enduml

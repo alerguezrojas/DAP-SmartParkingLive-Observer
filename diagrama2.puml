@@ -1,0 +1,85 @@
+@startuml
+' Configuración de estilo
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam linetype ortho
+
+title Grid Finders - Servicios, Precios e Integración
+
+' --- PAQUETE SERVICE ---
+package "smartparking.service" {
+    class ParkingService {
+        - parkingLot: ParkingLot
+        - properties: ParkingProperties
+        + getStatistics(): ParkingStatistics
+        + applyExternalSnapshot(snapshot: CarparkSnapshot)
+    }
+
+    class RealTimeParkingUpdater {
+        - client: SingaporeCarparkClient
+        - parkingService: ParkingService
+        - lastSnapshot: CarparkSnapshot
+        + refreshFromFeed()
+        - updateHistory(snapshots: List<CarparkSnapshot>)
+    }
+
+    class ParkingActivityLog {
+        - events: Deque<ParkingEvent>
+        + recordSpotChange(...)
+        + getRecent(limit: int): List<ParkingEvent>
+    }
+
+    class MonitoringService {
+        + getHealthSnapshot(): HealthSnapshot
+    }
+
+    class PricingService {
+        - pricingStrategy: PricingStrategy
+        - parkingService: ParkingService
+        + calculateQuote(minutes: int, ...): PricingQuote
+    }
+}
+
+' --- PAQUETE PRICING ---
+package "smartparking.pricing" {
+    interface PricingStrategy {
+        + calculate(request: PricingRequest): PricingQuote
+    }
+
+    class DynamicPricingStrategy implements PricingStrategy {
+        - baseRatePerHour: double
+        - peakMultiplier: double
+        + calculate(request: PricingRequest): PricingQuote
+    }
+
+    record PricingRequest
+    record PricingQuote
+}
+
+' --- PAQUETE INTEGRATION ---
+package "smartparking.integration" {
+    class SingaporeCarparkClient {
+        - restClient: RestClient
+        + fetchMetadata(): List<CarparkMetadata>
+        + fetchAll(): List<CarparkSnapshot>
+    }
+    record CarparkSnapshot
+    record CarparkMetadata
+}
+
+' --- RELACIONES ---
+' Service -> Integration
+RealTimeParkingUpdater --> SingaporeCarparkClient : usa >
+RealTimeParkingUpdater --> ParkingService : actualiza >
+
+' Pricing Logic
+PricingService --> PricingStrategy : delega >
+DynamicPricingStrategy ..> PricingRequest : usa
+DynamicPricingStrategy ..> PricingQuote : crea
+
+' Monitoring
+MonitoringService --> ParkingService
+MonitoringService --> RealTimeParkingUpdater
+MonitoringService --> ParkingActivityLog
+
+@enduml

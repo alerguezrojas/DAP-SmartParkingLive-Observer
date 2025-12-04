@@ -1,0 +1,103 @@
+@startuml
+' Configuración de estilo
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam linetype ortho
+
+title Grid Finders - Núcleo y Patrón Observer
+
+' --- PAQUETE CORE / MODEL ---
+package "smartparking.model" {
+    enum SpotStatus {
+        FREE
+        OCCUPIED
+        OUT_OF_SERVICE
+    }
+
+    class ParkingSpot {
+        - id: int
+        - status: SpotStatus
+        - observers: List<ParkingObserver>
+        + attach(observer: ParkingObserver)
+        + detach(observer: ParkingObserver)
+        + setStatus(newStatus: SpotStatus)
+        - notifyObservers()
+    }
+
+    class ParkingLot {
+        - name: String
+        - spots: List<ParkingSpot>
+        - registeredObservers: List<ParkingObserver>
+        + findSpotById(id: int): Optional<ParkingSpot>
+        + changeSpotStatus(id: int, newStatus: SpotStatus)
+        + attachObserverToAllSpots(observer: ParkingObserver)
+        + resizeTo(desiredSpots: int)
+    }
+
+    class Carpark {
+        - carparkNumber: String
+        - address: String
+        - xCoord: String
+        - yCoord: String
+        - carparkType: String
+    }
+
+    class ParkingHistoryEntity {
+        - id: Long
+        - carparkId: String
+        - timestamp: LocalDateTime
+        - free: int
+        - occupied: int
+    }
+
+    record ParkingEvent {
+        spotId: int
+        status: SpotStatus
+        occurredAt: Instant
+        source: String
+        message: String
+    }
+}
+
+' --- PAQUETE OBSERVER (CORE) ---
+package "smartparking.observer" {
+    interface ParkingObserver {
+        + update(spot: ParkingSpot)
+    }
+}
+
+package "smartparking.observers" {
+    class ActivityLogObserver implements ParkingObserver {
+        + update(spot: ParkingSpot)
+    }
+    class MobileNotifierObserver implements ParkingObserver {
+        - interestedSpotId: int
+        + update(spot: ParkingSpot)
+    }
+    class SecurityModuleObserver implements ParkingObserver {
+        + update(spot: ParkingSpot)
+    }
+    class StatisticsModuleObserver implements ParkingObserver {
+        - parkingLot: ParkingLot
+        + update(spot: ParkingSpot)
+    }
+    class WebDashboardObserver implements ParkingObserver {
+        - parkingLot: ParkingLot
+        + update(spot: ParkingSpot)
+    }
+    class WebSocketObserver implements ParkingObserver {
+        - messagingTemplate: SimpMessagingTemplate
+        + update(spot: ParkingSpot)
+    }
+}
+
+' --- RELACIONES ---
+ParkingSpot "1" o-- "*" ParkingObserver : notifica >
+ParkingLot "1" *-- "*" ParkingSpot : contiene >
+ParkingSpot ..> SpotStatus
+
+' Dependencias de observadores hacia el modelo
+StatisticsModuleObserver --> ParkingLot
+WebDashboardObserver --> ParkingLot
+
+@enduml
