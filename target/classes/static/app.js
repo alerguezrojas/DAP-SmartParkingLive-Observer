@@ -12,7 +12,7 @@ let historyChart = null;
 
 // Inicializar la aplicacion
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('Iniciando SmartParking Live Dashboard...');
+    console.log('Iniciando Grid Finders Dashboard...');
     initChart();
     initHistoryChart();
     loadParkingData();

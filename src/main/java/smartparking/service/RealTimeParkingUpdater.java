@@ -1,23 +1,26 @@
 package smartparking.service;
 
+import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import smartparking.config.ParkingProperties;
+import smartparking.integration.CarparkMetadata;
 import smartparking.integration.CarparkSnapshot;
 import smartparking.integration.SingaporeCarparkClient;
-import smartparking.repository.CarparkRepository;
 import smartparking.model.Carpark;
+import smartparking.repository.CarparkRepository;
+import smartparking.repository.ParkingHistoryRepository;
+import smartparking.model.ParkingHistoryEntity;
+import smartparking.util.SVY21Converter;
 
-import jakarta.annotation.PostConstruct;
-import java.util.Optional;
-import java.util.stream.Collectors;
-import java.util.Map;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.Set;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Sincroniza el estado local con una fuente de datos en tiempo real.
@@ -34,10 +37,13 @@ public class RealTimeParkingUpdater {
     private final ParkingHistoryRepository parkingHistoryRepository;
 
     private volatile CarparkSnapshot lastSnapshot;
-    private volatile java.util.List<CarparkSnapshot> allSnapshots = java.util.Collections.emptyList();
-    private volatile java.util.List<smartparking.integration.CarparkMetadata> allMetadata = java.util.Collections.emptyList();
+    private volatile List<CarparkSnapshot> allSnapshots = Collections.emptyList();
+    private volatile List<CarparkMetadata> allMetadata = Collections.emptyList();
     private volatile String activeCarparkId;
     
+    // Cache for map data to avoid re-calculating on every request
+    private volatile List<Map<String, Object>> cachedMapData = Collections.emptyList();
+
     private final Map<String, CarparkSnapshot> lastKnownStates = new ConcurrentHashMap<>();
 
     public RealTimeParkingUpdater(
@@ -56,115 +62,100 @@ public class RealTimeParkingUpdater {
 
     @PostConstruct
     public void bootstrap() {
-        // Ejecutamos la carga inicial en un hilo separado para no bloquear el arranque de la aplicación
-        java.util.concurrent.CompletableFuture.runAsync(() -> {
-            try {
-                long count = carparkRepository.count();
-                if (count > 0) {
-                    log.info("Database check: Found {} existing records. Skipping initial import.", count);
-                    // Aún así cargamos los metadatos en memoria por si se necesitan
-                    long startFetch = System.currentTimeMillis();
-                    this.allMetadata = client.fetchMetadata();
-                    log.info("Metadata refresh: Loaded {} records into memory in {} ms", allMetadata.size(), (System.currentTimeMillis() - startFetch));
-                } else {
-                    log.info("Database check: Empty. Starting initial data import...");
-                    
-                    long startFetch = System.currentTimeMillis();
-                    this.allMetadata = client.fetchMetadata();
-                    long fetchTime = System.currentTimeMillis() - startFetch;
-                    log.info("API Fetch: Retrieved {} records in {} ms", allMetadata.size(), fetchTime);
-                    
-                    if (!allMetadata.isEmpty()) {
-                        java.util.List<Carpark> entities = allMetadata.stream()
-                            .map(m -> new Carpark(
-                                m.carparkNumber(),
-                                m.address(),
-                                m.xCoord(),
-                                m.yCoord(),
-                                m.carparkType(),
-                                m.typeOfParkingSystem(),
-                                m.shortTermParking(),
-                                m.freeParking(),
-                                m.nightParking(),
-                                m.carparkDecks(),
-                                m.gantryHeight(),
-                                m.carparkBasement()
-                            ))
-                            .collect(Collectors.toCollection(java.util.ArrayList::new));
-                        
-                        log.info("Database Import: Starting batch insert of {} records...", entities.size());
-                        long startSave = System.currentTimeMillis();
-                        carparkRepository.saveAll(entities);
-                        long saveTime = System.currentTimeMillis() - startSave;
-                        
-                        log.info("Database Import: COMPLETED. Saved {} records in {} ms (Avg: {} ms/record)", 
-                            entities.size(), 
-                            saveTime, 
-                            String.format("%.2f", (double)saveTime / entities.size()));
-                    } else {
-                        log.warn("API Fetch: No records found. Skipping database import.");
-                    }
-                }
-            } catch (Exception e) {
-                log.error("Bootstrap Error: Failed to initialize parking data", e);
+        CompletableFuture.runAsync(this::performInitialLoad);
+    }
+
+    private void performInitialLoad() {
+        try {
+            long count = carparkRepository.count();
+            if (count > 0) {
+                log.info("Database check: Found {} existing records. Skipping initial import.", count);
+                loadMetadataIntoMemory();
+            } else {
+                log.info("Database check: Empty. Starting initial data import...");
+                importMetadataToDatabase();
             }
-            
-            // Una vez terminada la carga de metadatos (o si falló), iniciamos el feed en tiempo real
-            refreshFromFeed();
-        });
+        } catch (Exception e) {
+            log.error("Bootstrap Error: Failed to initialize parking data", e);
+        }
+        refreshFromFeed();
+    }
+
+    private void loadMetadataIntoMemory() {
+        long startFetch = System.currentTimeMillis();
+        this.allMetadata = client.fetchMetadata();
+        log.info("Metadata refresh: Loaded {} records into memory in {} ms", allMetadata.size(), (System.currentTimeMillis() - startFetch));
+    }
+
+    private void importMetadataToDatabase() {
+        long startFetch = System.currentTimeMillis();
+        this.allMetadata = client.fetchMetadata();
+        long fetchTime = System.currentTimeMillis() - startFetch;
+        log.info("API Fetch: Retrieved {} records in {} ms", allMetadata.size(), fetchTime);
+
+        if (!allMetadata.isEmpty()) {
+            List<Carpark> entities = allMetadata.stream()
+                    .map(this::mapToEntity)
+                    .collect(Collectors.toList());
+
+            log.info("Database Import: Starting batch insert of {} records...", entities.size());
+            long startSave = System.currentTimeMillis();
+            carparkRepository.saveAll(entities);
+            long saveTime = System.currentTimeMillis() - startSave;
+
+            log.info("Database Import: COMPLETED. Saved {} records in {} ms (Avg: {} ms/record)",
+                    entities.size(), saveTime, String.format("%.2f", (double) saveTime / entities.size()));
+        } else {
+            log.warn("API Fetch: No records found. Skipping database import.");
+        }
+    }
+
+    private Carpark mapToEntity(CarparkMetadata m) {
+        return new Carpark(
+                m.carparkNumber(),
+                m.address(),
+                m.xCoord(),
+                m.yCoord(),
+                m.carparkType(),
+                m.typeOfParkingSystem(),
+                m.shortTermParking(),
+                m.freeParking(),
+                m.nightParking(),
+                m.carparkDecks(),
+                m.gantryHeight(),
+                m.carparkBasement()
+        );
     }
 
     @Scheduled(fixedDelayString = "${parking.update-interval-ms:30000}")
     public void refreshFromFeed() {
         var snapshots = client.fetchAll();
         this.allSnapshots = snapshots;
-        
+
         if (snapshots.isEmpty()) {
             log.warn("No hay datos en vivo, marcando todas las plazas como fuera de servicio");
             parkingService.markOutOfService();
             return;
         }
 
-        // --- History Update Logic ---
+        updateHistory(snapshots);
+        updateActiveCarpark(snapshots);
+        updateMapDataCache(snapshots);
+    }
+
+    private void updateHistory(List<CarparkSnapshot> snapshots) {
         try {
-            // Filter by known carparks (from metadata/DB)
             Set<String> knownIds = allMetadata.stream()
-                .map(smartparking.integration.CarparkMetadata::carparkNumber)
-                .collect(Collectors.toSet());
+                    .map(CarparkMetadata::carparkNumber)
+                    .collect(Collectors.toSet());
 
             List<ParkingHistoryEntity> historyToSave = new ArrayList<>();
 
             for (CarparkSnapshot snapshot : snapshots) {
                 String id = snapshot.carparkNumber();
-                // Only process if it's a known carpark
                 if (knownIds.contains(id)) {
-                    CarparkSnapshot previous = lastKnownStates.get(id);
-                    boolean changed = false;
-
-                    if (previous == null) {
-                        // New in this session (or first run)
-                        changed = true;
-                    } else {
-                        // Compare availability
-                        int prevFree = previous.types().stream().mapToInt(t -> t.availableLots()).sum();
-                        int currFree = snapshot.types().stream().mapToInt(t -> t.availableLots()).sum();
-                        if (prevFree != currFree) {
-                            changed = true;
-                        }
-                    }
-
-                    if (changed) {
-                        int total = snapshot.types().stream().mapToInt(t -> t.totalLots()).sum();
-                        int free = snapshot.types().stream().mapToInt(t -> t.availableLots()).sum();
-                        
-                        ParkingHistoryEntity entity = new ParkingHistoryEntity(
-                            id,
-                            java.time.LocalDateTime.ofInstant(snapshot.updatedAt(), java.time.ZoneId.systemDefault()),
-                            free,
-                            total - free // occupied
-                        );
-                        historyToSave.add(entity);
-                        
+                    if (hasChanged(id, snapshot)) {
+                        historyToSave.add(createHistoryEntity(snapshot));
                         lastKnownStates.put(id, snapshot);
                     }
                 }
@@ -177,9 +168,29 @@ public class RealTimeParkingUpdater {
         } catch (Exception e) {
             log.error("Error updating parking history", e);
         }
-        // -----------------------------
+    }
 
-        // Por defecto usamos el primer parking o el configurado
+    private boolean hasChanged(String id, CarparkSnapshot current) {
+        CarparkSnapshot previous = lastKnownStates.get(id);
+        if (previous == null) return true;
+
+        int prevFree = previous.types().stream().mapToInt(t -> t.availableLots()).sum();
+        int currFree = current.types().stream().mapToInt(t -> t.availableLots()).sum();
+        return prevFree != currFree;
+    }
+
+    private ParkingHistoryEntity createHistoryEntity(CarparkSnapshot snapshot) {
+        int total = snapshot.types().stream().mapToInt(t -> t.totalLots()).sum();
+        int free = snapshot.types().stream().mapToInt(t -> t.availableLots()).sum();
+        return new ParkingHistoryEntity(
+                snapshot.carparkNumber(),
+                LocalDateTime.ofInstant(snapshot.updatedAt(), ZoneId.systemDefault()),
+                free,
+                total - free
+        );
+    }
+
+    private void updateActiveCarpark(List<CarparkSnapshot> snapshots) {
         String target = activeCarparkId;
         if (target == null) target = properties.getCarparkNumber();
 
@@ -191,30 +202,74 @@ public class RealTimeParkingUpdater {
 
         this.lastSnapshot = selected;
         parkingService.applyExternalSnapshot(selected);
-        
-        log.info("Actualizado estado desde feed para parking {}: {} libres / {} total", 
-                selected.carparkNumber(), 
+
+        log.info("Actualizado estado desde feed para parking {}: {} libres / {} total",
+                selected.carparkNumber(),
                 selected.types().stream().mapToInt(t -> t.availableLots()).sum(),
                 selected.types().stream().mapToInt(t -> t.totalLots()).sum());
+    }
+    
+    private void updateMapDataCache(List<CarparkSnapshot> snapshots) {
+         Map<String, CarparkMetadata> metaMap = allMetadata.stream()
+                .collect(Collectors.toMap(
+                        CarparkMetadata::carparkNumber,
+                        m -> m,
+                        (existing, replacement) -> existing
+                ));
+
+        this.cachedMapData = snapshots.stream()
+                .map(snapshot -> buildMapData(snapshot, metaMap.get(snapshot.carparkNumber())))
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+    }
+    
+    private Map<String, Object> buildMapData(CarparkSnapshot snapshot, CarparkMetadata meta) {
+        if (meta == null || meta.xCoord() == null || meta.yCoord() == null) {
+            return null;
+        }
+        try {
+            double x = Double.parseDouble(meta.xCoord());
+            double y = Double.parseDouble(meta.yCoord());
+            SVY21Converter.LatLon latLon = SVY21Converter.computeLatLon(y, x);
+
+            int total = snapshot.types().stream().mapToInt(t -> t.totalLots()).sum();
+            int available = snapshot.types().stream().mapToInt(t -> t.availableLots()).sum();
+
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", snapshot.carparkNumber());
+            map.put("address", meta.address());
+            map.put("lat", latLon.lat);
+            map.put("lon", latLon.lon);
+            map.put("total", total);
+            map.put("available", available);
+            map.put("type", meta.carparkType());
+            return map;
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     public Optional<CarparkSnapshot> getLastSnapshot() {
         return Optional.ofNullable(lastSnapshot);
     }
 
-    public java.util.List<CarparkSnapshot> getAllSnapshots() {
+    public List<CarparkSnapshot> getAllSnapshots() {
         return allSnapshots;
     }
 
-    public java.util.List<smartparking.integration.CarparkMetadata> getAllMetadata() {
+    public List<CarparkMetadata> getAllMetadata() {
         return allMetadata;
+    }
+    
+    public List<Map<String, Object>> getCachedMapData() {
+        return cachedMapData;
     }
 
     public boolean setActiveCarpark(String carparkId) {
         Optional<CarparkSnapshot> found = allSnapshots.stream()
-            .filter(s -> s.carparkNumber().equalsIgnoreCase(carparkId))
-            .findFirst();
-            
+                .filter(s -> s.carparkNumber().equalsIgnoreCase(carparkId))
+                .findFirst();
+
         if (found.isPresent()) {
             this.activeCarparkId = carparkId;
             this.lastSnapshot = found.get();
