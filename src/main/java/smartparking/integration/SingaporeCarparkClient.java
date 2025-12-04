@@ -17,11 +17,32 @@ public class SingaporeCarparkClient {
 
     private static final Logger log = LoggerFactory.getLogger(SingaporeCarparkClient.class);
     private static final String ENDPOINT = "https://api.data.gov.sg/v1/transport/carpark-availability";
+    private static final String METADATA_ENDPOINT = "https://data.gov.sg/api/action/datastore_search?resource_id=139a3035-e624-4f56-b63f-89ae28d4ae4c&limit=3000&q=";
 
     private final RestClient restClient;
+    private final RestClient metadataClient;
 
     public SingaporeCarparkClient(RestClient.Builder restClientBuilder) {
         this.restClient = restClientBuilder.baseUrl(ENDPOINT).build();
+        this.metadataClient = RestClient.create(METADATA_ENDPOINT);
+    }
+
+    public List<CarparkMetadata> fetchMetadata() {
+        try {
+            CkanResponse response = metadataClient.get()
+                    .retrieve()
+                    .body(CkanResponse.class);
+
+            if (response == null || response.result() == null || response.result().records() == null) {
+                return List.of();
+            }
+
+            return response.result().records();
+
+        } catch (Exception ex) {
+            log.warn("No se pudo obtener metadatos de parkings", ex);
+            return List.of();
+        }
     }
 
     public List<CarparkSnapshot> fetchAll() {
@@ -104,4 +125,10 @@ public class SingaporeCarparkClient {
             @JsonProperty("lots_available") String lotsAvailable,
             @JsonProperty("lot_type") String lotType
     ) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private record CkanResponse(Result result) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private record Result(List<CarparkMetadata> records) {}
 }
