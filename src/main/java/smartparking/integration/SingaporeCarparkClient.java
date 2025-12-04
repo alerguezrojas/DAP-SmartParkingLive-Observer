@@ -17,7 +17,7 @@ public class SingaporeCarparkClient {
 
     private static final Logger log = LoggerFactory.getLogger(SingaporeCarparkClient.class);
     private static final String ENDPOINT = "https://api.data.gov.sg/v1/transport/carpark-availability";
-    private static final String METADATA_ENDPOINT = "https://data.gov.sg/api/action/datastore_search?resource_id=139a3035-e624-4f56-b63f-89ae28d4ae4c&limit=3000&q=";
+    private static final String METADATA_ENDPOINT = "https://data.gov.sg/api/action/datastore_search?resource_id=139a3035-e624-4f56-b63f-89ae28d4ae4c&limit=200&q=";
 
     private final RestClient restClient;
     private final RestClient metadataClient;

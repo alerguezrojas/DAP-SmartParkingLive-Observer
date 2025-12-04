@@ -64,7 +64,8 @@ function initHistoryChart() {
                     borderColor: '#ef4444',
                     backgroundColor: 'rgba(239, 68, 68, 0.1)',
                     fill: true,
-                    tension: 0.4,
+                    tension: 0,
+                    stepped: true,
                     pointRadius: 0,
                     pointHoverRadius: 6
                 },
@@ -74,7 +75,8 @@ function initHistoryChart() {
                     borderColor: '#10b981',
                     backgroundColor: 'rgba(16, 185, 129, 0.1)',
                     fill: true,
-                    tension: 0.4,
+                    tension: 0,
+                    stepped: true,
                     pointRadius: 0,
                     pointHoverRadius: 6
                 }
@@ -136,9 +138,38 @@ async function loadHistory() {
 function updateHistoryChart(history) {
     if (!historyChart) return;
 
+    let chartData = [...history];
+
+    // 1. Si solo hay un registro, crear un punto anterior para tener una línea
+    if (chartData.length === 1) {
+        const point = chartData[0];
+        const currentTimestamp = new Date(point.timestamp).getTime();
+        const prevTimestamp = new Date(currentTimestamp - 10 * 60 * 1000).toISOString();
+        
+        chartData.unshift({
+            ...point,
+            timestamp: prevTimestamp
+        });
+    }
+
+    // 2. Proyectar hasta "AHORA" para evitar que la gráfica parezca cortada
+    if (chartData.length > 0) {
+        const lastPoint = chartData[chartData.length - 1];
+        const lastTime = new Date(lastPoint.timestamp).getTime();
+        const now = Date.now();
+
+        // Si el último dato tiene más de 1 minuto de antigüedad, añadimos un punto "ahora"
+        if (now - lastTime > 60000) {
+            chartData.push({
+                ...lastPoint,
+                timestamp: new Date(now).toISOString()
+            });
+        }
+    }
+
     // Mapear a formato {x, y} para escala de tiempo
-    const occupiedData = history.map(h => ({x: h.timestamp, y: h.occupied}));
-    const freeData = history.map(h => ({x: h.timestamp, y: h.free}));
+    const occupiedData = chartData.map(h => ({x: h.timestamp, y: h.occupied}));
+    const freeData = chartData.map(h => ({x: h.timestamp, y: h.free}));
 
     historyChart.data.datasets[0].data = occupiedData;
     historyChart.data.datasets[1].data = freeData;

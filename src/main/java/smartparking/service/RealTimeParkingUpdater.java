@@ -13,6 +13,11 @@ import smartparking.model.Carpark;
 import jakarta.annotation.PostConstruct;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Sincroniza el estado local con una fuente de datos en tiempo real.
@@ -26,22 +31,27 @@ public class RealTimeParkingUpdater {
     private final ParkingService parkingService;
     private final ParkingProperties properties;
     private final CarparkRepository carparkRepository;
+    private final ParkingHistoryRepository parkingHistoryRepository;
 
     private volatile CarparkSnapshot lastSnapshot;
     private volatile java.util.List<CarparkSnapshot> allSnapshots = java.util.Collections.emptyList();
     private volatile java.util.List<smartparking.integration.CarparkMetadata> allMetadata = java.util.Collections.emptyList();
     private volatile String activeCarparkId;
+    
+    private final Map<String, CarparkSnapshot> lastKnownStates = new ConcurrentHashMap<>();
 
     public RealTimeParkingUpdater(
             SingaporeCarparkClient client,
             ParkingService parkingService,
             ParkingProperties properties,
-            CarparkRepository carparkRepository
+            CarparkRepository carparkRepository,
+            ParkingHistoryRepository parkingHistoryRepository
     ) {
         this.client = client;
         this.parkingService = parkingService;
         this.properties = properties;
         this.carparkRepository = carparkRepository;
+        this.parkingHistoryRepository = parkingHistoryRepository;
     }
 
     @PostConstruct
@@ -114,6 +124,60 @@ public class RealTimeParkingUpdater {
             parkingService.markOutOfService();
             return;
         }
+
+        // --- History Update Logic ---
+        try {
+            // Filter by known carparks (from metadata/DB)
+            Set<String> knownIds = allMetadata.stream()
+                .map(smartparking.integration.CarparkMetadata::carparkNumber)
+                .collect(Collectors.toSet());
+
+            List<ParkingHistoryEntity> historyToSave = new ArrayList<>();
+
+            for (CarparkSnapshot snapshot : snapshots) {
+                String id = snapshot.carparkNumber();
+                // Only process if it's a known carpark
+                if (knownIds.contains(id)) {
+                    CarparkSnapshot previous = lastKnownStates.get(id);
+                    boolean changed = false;
+
+                    if (previous == null) {
+                        // New in this session (or first run)
+                        changed = true;
+                    } else {
+                        // Compare availability
+                        int prevFree = previous.types().stream().mapToInt(t -> t.availableLots()).sum();
+                        int currFree = snapshot.types().stream().mapToInt(t -> t.availableLots()).sum();
+                        if (prevFree != currFree) {
+                            changed = true;
+                        }
+                    }
+
+                    if (changed) {
+                        int total = snapshot.types().stream().mapToInt(t -> t.totalLots()).sum();
+                        int free = snapshot.types().stream().mapToInt(t -> t.availableLots()).sum();
+                        
+                        ParkingHistoryEntity entity = new ParkingHistoryEntity(
+                            id,
+                            java.time.LocalDateTime.ofInstant(snapshot.updatedAt(), java.time.ZoneId.systemDefault()),
+                            free,
+                            total - free // occupied
+                        );
+                        historyToSave.add(entity);
+                        
+                        lastKnownStates.put(id, snapshot);
+                    }
+                }
+            }
+
+            if (!historyToSave.isEmpty()) {
+                parkingHistoryRepository.saveAll(historyToSave);
+                log.info("History Update: Saved {} new records (changes detected)", historyToSave.size());
+            }
+        } catch (Exception e) {
+            log.error("Error updating parking history", e);
+        }
+        // -----------------------------
 
         // Por defecto usamos el primer parking o el configurado
         String target = activeCarparkId;
