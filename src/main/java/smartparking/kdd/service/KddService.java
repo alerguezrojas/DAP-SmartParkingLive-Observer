@@ -20,6 +20,13 @@ public class KddService {
 
     @Transactional
     public KddUser registerUser(String name, double lat, double lon, boolean isMod) {
+        if (name == null || name.trim().isEmpty()) {
+            throw new IllegalArgumentException("El nombre no puede estar vacío");
+        }
+        if (name.contains(" ")) {
+            throw new IllegalArgumentException("El nombre debe ser una única palabra (sin espacios)");
+        }
+
         // Verificar si ya existe para no duplicar (opcional, por nombre)
         Optional<KddUser> existing = userRepository.findByName(name);
         if (existing.isPresent()) {

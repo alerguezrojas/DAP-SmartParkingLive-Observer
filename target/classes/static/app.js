@@ -695,6 +695,11 @@ function registerKddUser() {
         return;
     }
 
+    if (name.includes(' ')) {
+        showToast('Error', 'El nombre debe ser una única palabra (sin espacios)', 'error');
+        return;
+    }
+
     fetch('/api/kdd/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

@@ -20,11 +20,15 @@ import smartparking.service.ParkingService;
 import smartparking.service.PricingService;
 import smartparking.service.RealTimeParkingUpdater;
 import smartparking.pricing.PricingQuote;
+import smartparking.repository.CarparkRepository;
+import smartparking.model.Carpark;
 
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Controlador REST para el sistema de parking.
@@ -40,6 +44,7 @@ public class ParkingController {
     private final MonitoringService monitoringService;
     private final PricingService pricingService;
     private final ParkingHistoryService parkingHistoryService;
+    private final CarparkRepository carparkRepository;
 
     public ParkingController(
             ParkingService parkingService,
@@ -47,13 +52,15 @@ public class ParkingController {
             ParkingActivityLog parkingActivityLog,
             MonitoringService monitoringService,
             PricingService pricingService,
-            ParkingHistoryService parkingHistoryService) {
+            ParkingHistoryService parkingHistoryService,
+            CarparkRepository carparkRepository) {
         this.parkingService = parkingService;
         this.realTimeParkingUpdater = realTimeParkingUpdater;
         this.parkingActivityLog = parkingActivityLog;
         this.monitoringService = monitoringService;
         this.pricingService = pricingService;
         this.parkingHistoryService = parkingHistoryService;
+        this.carparkRepository = carparkRepository;
     }
 
     /**
@@ -133,7 +140,13 @@ public class ParkingController {
 
     @GetMapping("/list")
     public List<Map<String, Object>> listAllCarparks() {
+        // Filter by parkings present in the database
+        Set<String> allowedIds = carparkRepository.findAll().stream()
+                .map(Carpark::getCarparkNumber)
+                .collect(Collectors.toSet());
+
         return realTimeParkingUpdater.getAllSnapshots().stream()
+                .filter(s -> allowedIds.contains(s.carparkNumber()))
                 .map(s -> {
                     Map<String, Object> map = new java.util.HashMap<>();
                     map.put("id", s.carparkNumber());
@@ -141,7 +154,7 @@ public class ParkingController {
                     map.put("availableLots", s.types().stream().mapToInt(t -> t.availableLots()).sum());
                     return map;
                 })
-                .collect(java.util.stream.Collectors.toList());
+                .collect(Collectors.toList());
     }
 
     @org.springframework.web.bind.annotation.PostMapping("/select/{id}")
