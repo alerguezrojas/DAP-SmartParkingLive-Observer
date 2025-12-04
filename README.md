@@ -1,148 +1,131 @@
-# 🚗 SmartParking Live - Sistema de Gestión de Aparcamiento
+﻿#  Grid Finders
 
-Sistema de gestión de aparcamiento en tiempo real implementando el patrón Observer con interfaz web moderna.
+> **Sistema Profesional de Monitorización de Aparcamiento en Tiempo Real**
+> *Anteriormente conocido como SmartParking Live Observer*
 
-## 📋 Características
+![Java](https://img.shields.io/badge/Java-17%2B-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.5-6DB33F?style=for-the-badge&logo=spring-boot&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
+![JavaScript](https://img.shields.io/badge/JavaScript-ES6%2B-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)
 
-- ✅ **Patrón Observer**: Notificaciones en tiempo real a múltiples observadores.
-- 🌐 **Interfaz Web Moderna**: Dashboard responsive con visualización en tiempo real.
-- 🔌 **WebSocket**: Actualizaciones instantáneas sin recargar la página.
-- 📊 **Estadísticas en Vivo**: Contadores de plazas libres, ocupadas y en mantenimiento.
-- 🎯 **API REST Completa**: Endpoints para gestión externa.
-- 📱 **Simulación Móvil**: Observador que simula notificaciones a dispositivos móviles.
-- 🔐 **Módulo de Seguridad**: Observador para alertas de seguridad.
-- 📈 **Módulo de Estadísticas**: Observador para análisis de datos.
-
-## 🛠️ Tecnologías Utilizadas
-
-- **Backend**: Java 17+, Spring Boot 3.1.5
-- **WebSocket**: STOMP over SockJS
-- **Frontend**: HTML5, CSS3 (Variables, Flexbox/Grid), JavaScript Vanilla
-- **Patrón de Diseño**: Observer
-- **Build Tool**: Maven
-
-## 🏗️ Arquitectura
-
-### Patrón Observer
-
-El sistema implementa el patrón Observer donde:
-
-- **Subject**: `ParkingSpot` (cada plaza de aparcamiento)
-- **Observers**: 
-  - `WebDashboardObserver`: Panel web con resumen.
-  - `SecurityModuleObserver`: Alertas de seguridad.
-  - `StatisticsModuleObserver`: Estadísticas en tiempo real.
-  - `MobileNotifierObserver`: Notificaciones móviles simuladas.
-  - `WebSocketObserver`: Puente para notificaciones web en tiempo real.
-
-### Estructura del Proyecto
-
-```
-src/
-├── main/
-│   ├── java/smartparking/
-│   │   ├── SmartParkingApplication.java  # Aplicación Spring Boot
-│   │   ├── controller/                   # REST API
-│   │   ├── service/                      # Lógica de negocio
-│   │   ├── web/                          # Configuración WebSocket
-│   │   ├── model/                        # Modelos (ParkingLot, ParkingSpot)
-│   │   ├── observer/                     # Interfaz ParkingObserver
-│   │   └── observers/                    # Implementaciones de observadores
-│   └── resources/
-│       ├── static/                       # Frontend (HTML, CSS, JS)
-│       └── application.properties        # Configuración
-```
-
-## 🚀 Instalación y Ejecución
-
-### Prerrequisitos
-
-1. **Java 17** o superior instalado (`java -version`).
-2. **Maven** instalado (`mvn -version`) o usar el wrapper/IDE.
-3. Puerto **8080** libre.
-
-### Pasos para ejecutar
-
-#### Opción 1: Usando IntelliJ IDEA (Recomendado)
-1. Abrir el proyecto en IntelliJ IDEA.
-2. Esperar a que Maven descargue las dependencias.
-3. Ejecutar la clase `src/main/java/smartparking/SmartParkingApplication.java`.
-
-#### Opción 2: Línea de Comandos
-1. Navegar a la carpeta del proyecto.
-2. Compilar y ejecutar:
-   ```bash
-   mvn spring-boot:run
-   ```
-
-#### Opción 3: Empaquetado JAR
-1. Compilar:
-   ```bash
-   mvn clean package
-   ```
-2. Ejecutar:
-   ```bash
-   java -jar target/smart-parking-live-observer-1.0.0.jar
-   ```
-
-Una vez iniciado, accede a:
-- **Web**: [http://localhost:8080](http://localhost:8080)
-- **API**: [http://localhost:8080/api/parking](http://localhost:8080/api/parking)
-
-## 🎨 Interfaz Web
-
-La interfaz web ha sido diseñada para ser intuitiva y profesional:
-
-- **Dashboard**: Muestra tarjetas con estadísticas clave (Total, Libres, Ocupadas, Mantenimiento).
-- **Mapa de Plazas**: Visualización gráfica del estado de cada plaza.
-  - 🟢 Libre
-  - 🔴 Ocupada
-  - 🟠 Mantenimiento
-- **Registro de Actividad**: Log en tiempo real de todos los eventos del sistema.
-- **Panel de Control**: Permite cambiar manualmente el estado de las plazas para pruebas.
-
-### Flujo de Datos en Tiempo Real
-1. Cambio de estado en el Backend (API/Simulación).
-2. `ParkingSpot` notifica a `WebSocketObserver`.
-3. `WebSocketObserver` envía mensaje STOMP a `/topic/parking-updates`.
-4. Frontend recibe el mensaje y actualiza el DOM instantáneamente.
-
-## 📡 API REST
-
-Endpoints disponibles para integración:
-
-- `GET /api/parking/spots`: Listar todas las plazas.
-- `GET /api/parking/spots/{id}`: Obtener detalle de una plaza.
-- `PUT /api/parking/spots/{id}/status`: Cambiar estado.
-  ```json
-  { "status": "OCCUPIED" }
-  ```
-- `GET /api/parking/statistics`: Obtener estadísticas actuales.
-
-### Ejemplo cURL
-```bash
-curl -X PUT http://localhost:8080/api/parking/spots/1/status \
-  -H "Content-Type: application/json" \
-  -d '{"status":"OCCUPIED"}'
-```
-
-## 🔧 Solución de Problemas
-
-- **Puerto 8080 ocupado**:
-  Edita `src/main/resources/application.properties` y cambia `server.port=8081`.
-- **Errores de compilación**:
-  Ejecuta `mvn clean install` para forzar la descarga de dependencias.
-- **No conecta WebSocket**:
-  Verifica que no haya firewalls bloqueando el puerto y revisa la consola del navegador (F12).
-
-## 🤝 Contribuir
-
-Este es un proyecto educativo de la Universidad de La Laguna (ULL) para demostrar el patrón de diseño Observer en un entorno real con Spring Boot.
+**Grid Finders** es una plataforma avanzada de gestión y visualización de disponibilidad de aparcamiento que integra datos en tiempo real de la API gubernamental de Singapur (data.gov.sg). Diseñado con una arquitectura robusta basada en eventos y microservicios, permite a los usuarios encontrar plazas libres, analizar tendencias históricas y gestionar eventos de comunidad (KDDs).
 
 ---
-Desarrollado con ❤️ usando Java y Spring Boot.
 
-## Nuevas mejoras (Codex)
-- Endpoint `/api/parking/events` para consultar el log reciente de cambios.
-- Endpoint `/api/parking/health` con estado combinado del feed y estadisticas locales.
-- Endpoint `/api/parking/pricing/quote` con estrategia dinamica de tarifas (configurable en `application.properties`).
+##  Características Principales
+
+###  Integración de Datos en Tiempo Real
+- **Sincronización en Vivo**: Conexión directa con la API de LTA (Land Transport Authority) de Singapur.
+- **Actualización Inteligente**: Sistema de *polling* optimizado que detecta cambios y actualiza solo los datos necesarios para minimizar el tráfico de red.
+- **Bootstrap Asíncrono**: Carga inicial de metadatos (~2200 parkings) en segundo plano sin bloquear el arranque de la aplicación.
+
+###  Dashboard Profesional
+- **Visualización Interactiva**: Gráficos dinámicos con **Chart.js** que muestran la ocupación actual y tendencias históricas.
+- **Mapa Geoespacial**: Integración con **Leaflet** para visualizar la ubicación exacta de los parkings y su estado (Libre/Ocupado) mediante códigos de color.
+- **WebSockets**: Actualizaciones *push* al navegador sin necesidad de recargar la página.
+
+###  Persistencia y Análisis
+- **Base de Datos PostgreSQL**: Almacenamiento robusto de metadatos de parkings y registros históricos.
+- **Histórico de Ocupación**: Seguimiento de cambios de disponibilidad a lo largo del tiempo para análisis predictivo.
+- **Detección de Cambios**: Algoritmo eficiente que solo almacena nuevos registros cuando hay variaciones reales en la disponibilidad.
+
+###  Comunidad y Eventos (KDD)
+- **Gestión de Usuarios**: Registro e inicio de sesión seguro.
+- **Eventos KDD**: Creación y gestión de quedadas (KDDs) en ubicaciones específicas.
+- **Validación**: Reglas de negocio estrictas para nombres de usuario y creación de eventos.
+
+---
+
+##  Stack Tecnológico
+
+### Backend
+- **Java 17**: Lenguaje base.
+- **Spring Boot 3.5**: Framework principal (Web, Data JPA, WebSocket).
+- **Hibernate / JPA**: ORM para la gestión de base de datos.
+- **PostgreSQL**: Motor de base de datos relacional.
+- **Maven**: Gestión de dependencias y construcción.
+
+### Frontend
+- **Vanilla JavaScript (ES6+)**: Lógica de cliente ligera y rápida.
+- **HTML5 / CSS3**: Diseño responsivo y moderno con variables CSS.
+- **Chart.js**: Librería de gráficos para visualización de datos.
+- **Leaflet**: Librería de mapas interactivos.
+- **SockJS & STOMP**: Comunicación WebSocket robusta.
+
+---
+
+##  Arquitectura y Patrones de Diseño
+
+El proyecto sigue una arquitectura limpia y modular, destacando el uso de los siguientes patrones:
+
+1.  **Patrón Observer (Observador)**:
+    *   Núcleo del sistema de notificaciones.
+    *   Clases como WebSocketObserver, StatisticsModuleObserver y ActivityLogObserver reaccionan automáticamente a cambios en el estado de las plazas (ParkingSpot).
+
+2.  **Patrón Repository**:
+    *   Abstracción de la capa de datos mediante CarparkRepository y ParkingHistoryRepository.
+
+3.  **Patrón Singleton**:
+    *   Gestión de servicios (ParkingService, RealTimeParkingUpdater) a través del contenedor de Spring.
+
+4.  **Patrón Adapter**:
+    *   SingaporeCarparkClient adapta los datos JSON externos al modelo de dominio interno.
+
+---
+
+##  Configuración
+
+El archivo src/main/resources/application.properties permite configurar el comportamiento del sistema:
+
+`properties
+# Nombre de la Aplicación
+spring.application.name=Grid Finders
+
+# Configuración del Servidor
+server.port=8080
+
+# Base de Datos (PostgreSQL)
+spring.datasource.url=jdbc:postgresql://<HOST>:<PORT>/<DB_NAME>
+spring.datasource.username=<USER>
+spring.datasource.password=<PASSWORD>
+
+# Optimización JPA
+spring.jpa.properties.hibernate.jdbc.batch_size=50
+spring.jpa.properties.hibernate.order_inserts=true
+
+# Intervalo de Actualización (ms)
+parking.update-interval-ms=30000
+` 
+
+##  Instalación y Ejecución
+
+1.  **Clonar el repositorio**:
+    `ash
+    git clone https://github.com/alerguezrojas/DAP-SmartParkingLive-Observer.git
+    cd DAP-SmartParkingLive-Observer
+    ` 
+
+2.  **Configurar Base de Datos**:
+    *   Asegúrate de tener una instancia de PostgreSQL corriendo.
+    *   Actualiza las credenciales en pplication.properties.
+
+3.  **Compilar y Ejecutar**:
+    `ash
+    ./mvnw spring-boot:run
+    ` 
+
+4.  **Acceder al Dashboard**:
+    *   Abre tu navegador en http://localhost:8080.
+
+---
+
+##  Autores
+
+*   **Alejandro** - *Lead Developer & Backend Architect*
+*   **Aitor** - *Frontend Developer & UX Specialist*
+
+---
+
+##  Licencia
+
+Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE.md](LICENSE.md) para más detalles.
