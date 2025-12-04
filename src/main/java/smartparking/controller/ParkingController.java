@@ -209,49 +209,6 @@ public class ParkingController {
      */
     @GetMapping("/map-data")
     public ResponseEntity<List<Map<String, Object>>> getMapData() {
-        List<smartparking.integration.CarparkSnapshot> snapshots = realTimeParkingUpdater.getAllSnapshots();
-        List<smartparking.integration.CarparkMetadata> metadataList = realTimeParkingUpdater.getAllMetadata();
-
-        // Index metadata by carpark number for fast lookup
-        Map<String, smartparking.integration.CarparkMetadata> metaMap = metadataList.stream()
-                .collect(java.util.stream.Collectors.toMap(
-                        m -> m.carparkNumber(),
-                        m -> m,
-                        (existing, replacement) -> existing // keep first if duplicates
-                ));
-
-        List<Map<String, Object>> result = snapshots.stream()
-                .map(snapshot -> {
-                    smartparking.integration.CarparkMetadata meta = metaMap.get(snapshot.carparkNumber());
-                    if (meta == null || meta.xCoord() == null || meta.yCoord() == null) {
-                        return null;
-                    }
-
-                    try {
-                        double x = Double.parseDouble(meta.xCoord());
-                        double y = Double.parseDouble(meta.yCoord());
-                        smartparking.util.SVY21Converter.LatLon latLon = smartparking.util.SVY21Converter
-                                .computeLatLon(y, x); // Note: SVY21 N=y, E=x
-
-                        int total = snapshot.types().stream().mapToInt(t -> t.totalLots()).sum();
-                        int available = snapshot.types().stream().mapToInt(t -> t.availableLots()).sum();
-
-                        Map<String, Object> map = new java.util.HashMap<>();
-                        map.put("id", snapshot.carparkNumber());
-                        map.put("address", meta.address());
-                        map.put("lat", latLon.lat);
-                        map.put("lon", latLon.lon);
-                        map.put("total", total);
-                        map.put("available", available);
-                        map.put("type", meta.carparkType());
-                        return map;
-                    } catch (NumberFormatException e) {
-                        return null;
-                    }
-                })
-                .filter(java.util.Objects::nonNull)
-                .collect(java.util.stream.Collectors.toList());
-
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(realTimeParkingUpdater.getCachedMapData());
     }
 }
