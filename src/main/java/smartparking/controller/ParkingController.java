@@ -47,8 +47,7 @@ public class ParkingController {
             ParkingActivityLog parkingActivityLog,
             MonitoringService monitoringService,
             PricingService pricingService,
-            ParkingHistoryService parkingHistoryService
-    ) {
+            ParkingHistoryService parkingHistoryService) {
         this.parkingService = parkingService;
         this.realTimeParkingUpdater = realTimeParkingUpdater;
         this.parkingActivityLog = parkingActivityLog;
@@ -91,8 +90,7 @@ public class ParkingController {
                 return ResponseEntity.ok(Map.of(
                         "message", "Estado actualizado correctamente",
                         "spotId", String.valueOf(id),
-                        "newStatus", newStatus.toString()
-                ));
+                        "newStatus", newStatus.toString()));
             } else {
                 return ResponseEntity.notFound().build();
             }
@@ -121,32 +119,29 @@ public class ParkingController {
                     int total = s.types().stream().mapToInt(t -> t.totalLots()).sum();
                     int available = s.types().stream().mapToInt(t -> t.availableLots()).sum();
                     return Map.of(
-                        "carparkNumber", s.carparkNumber(),
-                        "availableLots", available,
-                        "totalLots", total,
-                        "open", true,
-                        "updatedAt", DateTimeFormatter.ISO_INSTANT.format(s.updatedAt()),
-                        "source", "data.gov.sg/transport/carpark-availability",
-                        "types", s.types()
-                    );
+                            "carparkNumber", s.carparkNumber(),
+                            "availableLots", available,
+                            "totalLots", total,
+                            "open", true,
+                            "updatedAt", DateTimeFormatter.ISO_INSTANT.format(s.updatedAt()),
+                            "source", "data.gov.sg/transport/carpark-availability",
+                            "types", s.types());
                 }).orElseGet(() -> Map.of(
                         "message", "Sin datos en vivo todavia",
-                        "source", "data.gov.sg/transport/carpark-availability"
-                ))
-        );
+                        "source", "data.gov.sg/transport/carpark-availability")));
     }
 
     @GetMapping("/list")
     public List<Map<String, Object>> listAllCarparks() {
         return realTimeParkingUpdater.getAllSnapshots().stream()
-            .map(s -> {
-                Map<String, Object> map = new java.util.HashMap<>();
-                map.put("id", s.carparkNumber());
-                map.put("totalLots", s.types().stream().mapToInt(t -> t.totalLots()).sum());
-                map.put("availableLots", s.types().stream().mapToInt(t -> t.availableLots()).sum());
-                return map;
-            })
-            .collect(java.util.stream.Collectors.toList());
+                .map(s -> {
+                    Map<String, Object> map = new java.util.HashMap<>();
+                    map.put("id", s.carparkNumber());
+                    map.put("totalLots", s.types().stream().mapToInt(t -> t.totalLots()).sum());
+                    map.put("availableLots", s.types().stream().mapToInt(t -> t.availableLots()).sum());
+                    return map;
+                })
+                .collect(java.util.stream.Collectors.toList());
     }
 
     @org.springframework.web.bind.annotation.PostMapping("/select/{id}")
@@ -184,8 +179,7 @@ public class ParkingController {
     public ResponseEntity<PricingQuote> getQuote(
             @RequestParam(defaultValue = "60") int minutes,
             @RequestParam(defaultValue = "false") boolean subscriber,
-            @RequestParam(defaultValue = "false") boolean electric
-    ) {
+            @RequestParam(defaultValue = "false") boolean electric) {
         return ResponseEntity.ok(pricingService.calculateQuote(minutes, subscriber, electric));
     }
 
@@ -195,5 +189,56 @@ public class ParkingController {
     @GetMapping("/history")
     public ResponseEntity<List<ParkingHistoryService.HistoryPoint>> getHistory() {
         return ResponseEntity.ok(parkingHistoryService.getHistory());
+    }
+
+    /**
+     * Devuelve datos para el mapa: ubicación (lat/lon) y estado actual.
+     */
+    @GetMapping("/map-data")
+    public ResponseEntity<List<Map<String, Object>>> getMapData() {
+        List<smartparking.integration.CarparkSnapshot> snapshots = realTimeParkingUpdater.getAllSnapshots();
+        List<smartparking.integration.CarparkMetadata> metadataList = realTimeParkingUpdater.getAllMetadata();
+
+        // Index metadata by carpark number for fast lookup
+        Map<String, smartparking.integration.CarparkMetadata> metaMap = metadataList.stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        m -> m.carparkNumber(),
+                        m -> m,
+                        (existing, replacement) -> existing // keep first if duplicates
+                ));
+
+        List<Map<String, Object>> result = snapshots.stream()
+                .map(snapshot -> {
+                    smartparking.integration.CarparkMetadata meta = metaMap.get(snapshot.carparkNumber());
+                    if (meta == null || meta.xCoord() == null || meta.yCoord() == null) {
+                        return null;
+                    }
+
+                    try {
+                        double x = Double.parseDouble(meta.xCoord());
+                        double y = Double.parseDouble(meta.yCoord());
+                        smartparking.util.SVY21Converter.LatLon latLon = smartparking.util.SVY21Converter
+                                .computeLatLon(y, x); // Note: SVY21 N=y, E=x
+
+                        int total = snapshot.types().stream().mapToInt(t -> t.totalLots()).sum();
+                        int available = snapshot.types().stream().mapToInt(t -> t.availableLots()).sum();
+
+                        Map<String, Object> map = new java.util.HashMap<>();
+                        map.put("id", snapshot.carparkNumber());
+                        map.put("address", meta.address());
+                        map.put("lat", latLon.lat);
+                        map.put("lon", latLon.lon);
+                        map.put("total", total);
+                        map.put("available", available);
+                        map.put("type", meta.carparkType());
+                        return map;
+                    } catch (NumberFormatException e) {
+                        return null;
+                    }
+                })
+                .filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toList());
+
+        return ResponseEntity.ok(result);
     }
 }

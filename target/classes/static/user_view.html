@@ -131,7 +131,7 @@
 
             <!-- User Location Section -->
             <div
-                style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px;">
+                style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); margin-bottom: 20px;">
                 <h2 class="section-title"><i class="fa-solid fa-map-location-dot"></i> Mi Ubicación</h2>
                 <p class="text-muted" style="font-size: 0.9rem; margin-top: -10px; margin-bottom: 15px;">
                     Haz clic en el mapa para establecer tu nueva ubicación. El círculo muestra tu área de suscripción a
@@ -144,6 +144,19 @@
                     style="background: var(--primary-color); color: white; border: none; padding: 12px; border-radius: 6px; cursor: pointer; font-weight: 600; width: 100%;">
                     <i class="fa-solid fa-floppy-disk"></i> Actualizar Ubicación
                 </button>
+            </div>
+
+            <!-- Parking Map Section -->
+            <div
+                style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); margin-bottom: 20px;">
+                <h2 class="section-title"><i class="fa-solid fa-square-parking"></i> Parkings Cercanos</h2>
+                <p class="text-muted" style="font-size: 0.9rem; margin-top: -10px; margin-bottom: 15px;">
+                    Explora los parkings disponibles cerca de ti. Pasa el ratón por encima para ver detalles.
+                </p>
+                <div id="parkingMap" class="map-container" style="height: 400px;"></div>
+                <div id="parking-info" style="margin-top: 10px; min-height: 20px; font-size: 0.9rem; color: #555;">
+                    <i class="fa-solid fa-circle-info"></i> Pasa el ratón sobre un marcador para ver información.
+                </div>
             </div>
 
             <!-- Mod Tools Section -->
@@ -192,7 +205,7 @@
         let stompClient = null;
         const subscriptions = {};
 
-        let eventMap, locationMap;
+        let eventMap, locationMap, parkingMap;
         let eventMarker, locationMarker, locationCircle;
 
         function connectWebSocket() {
@@ -245,6 +258,9 @@
 
             // Initialize the user's location map
             initLocationMap(user.location.lat, user.location.lon);
+
+            // Initialize parking map
+            initParkingMap(user.location.lat, user.location.lon);
 
             // Update subscriptions badge
             const subsCount = user.subscriptions ? user.subscriptions.length : 0;
@@ -560,6 +576,76 @@
                     eventMarker = L.marker(e.latlng).addTo(eventMap);
                 }
             });
+        }
+
+        async function initParkingMap(userLat, userLon) {
+            if (parkingMap) return;
+
+            parkingMap = L.map('parkingMap').setView([userLat, userLon], 14);
+            L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            }).addTo(parkingMap);
+
+            // User marker
+            L.marker([userLat, userLon], {
+                icon: L.divIcon({
+                    className: 'user-marker',
+                    html: '<div style="background-color: #3b82f6; width: 15px; height: 15px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.5);"></div>',
+                    iconSize: [20, 20]
+                })
+            }).addTo(parkingMap).bindPopup("Tu ubicación");
+
+            try {
+                const response = await fetch('/api/parking/map-data');
+                if (!response.ok) throw new Error('Error cargando datos de parking');
+                const parkings = await response.json();
+
+                const infoDiv = document.getElementById('parking-info');
+
+                parkings.forEach(p => {
+                    // Color marker based on availability
+                    let color = '#10b981'; // Green (High availability)
+                    if (p.available === 0) color = '#ef4444'; // Red (Full)
+                    else if (p.available < 10) color = '#f59e0b'; // Orange (Low)
+
+                    const markerHtml = `
+                        <div style="background-color: ${color}; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; color: white; font-size: 10px; font-weight: bold;">
+                            P
+                        </div>
+                    `;
+
+                    const marker = L.marker([p.lat, p.lon], {
+                        icon: L.divIcon({
+                            className: 'parking-marker',
+                            html: markerHtml,
+                            iconSize: [24, 24]
+                        })
+                    }).addTo(parkingMap);
+
+                    // Hover events
+                    marker.on('mouseover', () => {
+                        infoDiv.innerHTML = `
+                            <strong>${p.address}</strong> (${p.id})<br>
+                            <span style="color: ${color}; font-weight: bold;">${p.available}</span> plazas libres de ${p.total}<br>
+                            <small>${p.type}</small>
+                        `;
+                    });
+
+                    marker.on('mouseout', () => {
+                        infoDiv.innerHTML = '<i class="fa-solid fa-circle-info"></i> Pasa el ratón sobre un marcador para ver información.';
+                    });
+
+                    // Also bind popup for mobile/click
+                    marker.bindPopup(`
+                        <strong>${p.address}</strong><br>
+                        Libres: ${p.available} / ${p.total}
+                    `);
+                });
+
+            } catch (e) {
+                console.error("Error loading parking map data:", e);
+            }
         }
     </script>
 </body>
