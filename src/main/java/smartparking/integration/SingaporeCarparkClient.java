@@ -8,9 +8,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
 import java.time.Instant;
-import java.util.Comparator;
 import java.util.List;
-import java.util.Optional;
 
 @Component
 public class SingaporeCarparkClient {

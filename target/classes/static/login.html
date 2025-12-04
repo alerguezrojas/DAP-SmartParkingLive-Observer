@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entrar - Grid Finders</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #6366f1;
+            --primary-hover: #4f46e5;
+            --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --glass-bg: rgba(255, 255, 255, 0.95);
+            --text-main: #1f2937;
+            --text-light: #6b7280;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', sans-serif;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-gradient);
+            overflow: hidden;
+        }
+
+        .login-container {
+            background: var(--glass-bg);
+            padding: 40px;
+            border-radius: 24px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            animation: slideUp 0.5s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .logo {
+            font-size: 3rem;
+            color: var(--primary-color);
+            margin-bottom: 20px;
+            display: inline-block;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0% {
+                transform: translateY(0px);
+            }
+
+            50% {
+                transform: translateY(-10px);
+            }
+
+            100% {
+                transform: translateY(0px);
+            }
+        }
+
+        h1 {
+            margin: 0 0 10px 0;
+            color: var(--text-main);
+            font-size: 1.8rem;
+            font-weight: 700;
+        }
+
+        p {
+            margin: 0 0 30px 0;
+            color: var(--text-light);
+            font-size: 0.95rem;
+        }
+
+        .input-group {
+            position: relative;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text-main);
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .input-wrapper i {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #9ca3af;
+            transition: color 0.3s;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 15px 12px 45px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-family: inherit;
+            transition: all 0.3s;
+            box-sizing: border-box;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+        }
+
+        input:focus+i {
+            color: var(--primary-color);
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        button:hover {
+            background: var(--primary-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .error-msg {
+            color: #ef4444;
+            font-size: 0.85rem;
+            margin-top: 10px;
+            display: none;
+            animation: shake 0.5s cubic-bezier(.36, .07, .19, .97) both;
+        }
+
+        @keyframes shake {
+
+            10%,
+            90% {
+                transform: translate3d(-1px, 0, 0);
+            }
+
+            20%,
+            80% {
+                transform: translate3d(2px, 0, 0);
+            }
+
+            30%,
+            50%,
+            70% {
+                transform: translate3d(-4px, 0, 0);
+            }
+
+            40%,
+            60% {
+                transform: translate3d(4px, 0, 0);
+            }
+        }
+
+        .loading-spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="login-container">
+        <div class="logo">
+            <i class="fa-solid fa-car-on"></i>
+        </div>
+        <h1>Bienvenido</h1>
+        <p>Introduce tu nombre para continuar</p>
+
+        <form id="loginForm" onsubmit="handleLogin(event)">
+            <div class="input-group">
+                <label for="username">Nombre de Usuario</label>
+                <div class="input-wrapper">
+                    <input type="text" id="username" placeholder="Tu nombre" required autofocus>
+                    <i class="fa-solid fa-user"></i>
+                </div>
+                <div id="error" class="error-msg"></div>
+            </div>
+
+            <button type="submit" id="submitBtn">
+                <span class="btn-text">Continuar</span>
+                <div class="loading-spinner"></div>
+            </button>
+        </form>
+    </div>
+
+    <script>
+        async function handleLogin(e) {
+            e.preventDefault();
+
+            const usernameInput = document.getElementById('username');
+            const username = usernameInput.value.trim();
+            const btn = document.getElementById('submitBtn');
+            const spinner = btn.querySelector('.loading-spinner');
+            const btnText = btn.querySelector('.btn-text');
+            const errorDiv = document.getElementById('error');
+
+            if (!username) return;
+
+            // Reset UI
+            errorDiv.style.display = 'none';
+            btn.disabled = true;
+            btnText.style.display = 'none';
+            spinner.style.display = 'block';
+
+            try {
+                // Check if user exists
+                const searchResponse = await fetch(`/api/kdd/usuario/search?name=${encodeURIComponent(username)}`);
+
+                if (searchResponse.ok) {
+                    // User exists, redirect
+                    window.location.href = `/usuario/${username}`;
+                } else if (searchResponse.status === 404) {
+                    // User doesn't exist, create new
+                    await createUser(username);
+                } else {
+                    throw new Error('Error de conexión con el servidor');
+                }
+
+            } catch (error) {
+                console.error(error);
+                showError(error.message || 'Ha ocurrido un error. Inténtalo de nuevo.');
+                resetBtn();
+            }
+        }
+
+        async function createUser(name) {
+            try {
+                const response = await fetch('/api/kdd/users', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name: name,
+                        lat: 1.3521, // Default to singapour
+                        lon: 103.8198,
+                        isMod: false
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('No se pudo crear el usuario');
+                }
+
+                // Redirect after creation
+                window.location.href = `/usuario/${name}`;
+
+            } catch (error) {
+                throw error;
+            }
+        }
+
+        function showError(msg) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = msg;
+            errorDiv.style.display = 'block';
+        }
+
+        function resetBtn() {
+            const btn = document.getElementById('submitBtn');
+            const spinner = btn.querySelector('.loading-spinner');
+            const btnText = btn.querySelector('.btn-text');
+
+            btn.disabled = false;
+            btnText.style.display = 'block';
+            spinner.style.display = 'none';
+        }
+    </script>
+</body>
+
+</html>

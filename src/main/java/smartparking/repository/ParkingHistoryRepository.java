@@ -1,6 +1,7 @@
-package smartparking.service;
+package smartparking.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import smartparking.model.ParkingHistoryEntity;
 import java.util.List;
 import java.util.Optional;
 

@@ -2,7 +2,6 @@ package smartparking.kdd;
 
 import smartparking.kdd.model.KddEvent;
 import smartparking.kdd.model.KddUser;
-import smartparking.kdd.model.Location;
 import smartparking.kdd.service.KddEventRepository;
 import smartparking.kdd.service.KddService;
 import smartparking.kdd.service.KddUserRepository;

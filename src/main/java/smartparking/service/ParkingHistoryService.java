@@ -2,6 +2,8 @@ package smartparking.service;
 
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import smartparking.repository.ParkingHistoryRepository;
+import smartparking.model.ParkingHistoryEntity;
 
 import java.time.LocalDateTime;
 import java.util.List;

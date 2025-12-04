@@ -1,4 +1,4 @@
-package smartparking.service;
+package smartparking.model;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
